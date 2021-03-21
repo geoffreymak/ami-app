@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1008516660973",
+    "project_id": "vada-project",
+    "storage_bucket": "vada-project.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1008516660973:android:3158ac3bb67d823898d6e4",
+        "android_client_info": {
+          "package_name": "com.thrift"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1008516660973-usmmt4jocmt7jm3f0iv35gjehc8bn5if.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8CqI84yjv5i6doWDZtyXn7Er1YyHQa8I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1008516660973-usmmt4jocmt7jm3f0iv35gjehc8bn5if.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

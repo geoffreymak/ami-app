@@ -1,0 +1,23 @@
+rootProject.name = 'AmiApp'
+include ':lottie-react-native'
+project(':lottie-react-native').projectDir = new File(rootProject.projectDir, '../node_modules/lottie-react-native/src/android')
+include ':react-native-print'
+project(':react-native-print').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-print/android')
+include ':react-native-share'
+project(':react-native-share').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-share/android')
+include ':react-native-share'
+project(':react-native-share').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-share/android')
+include ':react-native-share'
+project(':react-native-share').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-share/android')
+apply from: '../node_modules/react-native-unimodules/gradle.groovy'; includeUnimodulesProjects()
+apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
+
+include ':app'
+include ':unimodules-react-native-adapter'
+project(':unimodules-react-native-adapter').projectDir = new File(rootProject.projectDir, '../node_modules/@unimodules/react-native-adapter/android')
+
+include ':unimodules-core'
+project(':unimodules-core').projectDir = new File(rootProject.projectDir, '../node_modules/@unimodules/core/android')
+
+include ':react-native-html-to-pdf'
+project(':react-native-html-to-pdf').projectDir = new File(rootProject.projectDir,'../node_modules/react-native-html-to-pdf/android')
