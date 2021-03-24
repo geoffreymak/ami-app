@@ -10,7 +10,7 @@ import {
 } from '../actions/transactionActions';
 
 const initialState = {
-  data: {},
+  data: [],
   list: [],
   adding: {
     loading: false,

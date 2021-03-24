@@ -9,10 +9,11 @@ import getMemberFromTransaction from '../../members/getMemberFromTransaction';
 
 const getFormatedDate = (date) => moment(date).format('DD/MM/YYYY');
 
-const getTransactionLessThan = (transaction, date) =>
-  transaction.filter((trans) =>
-    moment(trans.addTimestamp).isBefore(date, 'days'),
-  );
+const getTransactionLessThan = (transaction, date, includeLast = true) =>
+  transaction.filter((trans) => {
+    const func = includeLast ? 'isSameOrBefore' : 'isBefore';
+    moment(trans.addTimestamp)[func](date, 'days');
+  });
 
 const mergreTransaction = (data) => {
   let mergedArray = [];
@@ -48,7 +49,7 @@ const createRow = (transaction, index, transactions, report) => `
 
 const createRowFooter = (data, dates, transCategory) => `
   <tr>
-    <th class="tg-49qb" colspan="2">Total Général / ${
+    <th class="tg-49qb" colspan="2">Total Général/Periodique ${
       transCategory === 'C' ? 'Crédit' : 'Epargne'
     }</th>
     <td class="tg-lvqx">
@@ -56,10 +57,7 @@ const createRowFooter = (data, dates, transCategory) => `
         ${
           !!data
             ? getFormatedNumber(
-                getTransactionsSolde(
-                  getTransactionLessThan(data, dates.dateTo),
-                  'D',
-                ),
+                getTransactionsSolde(filterTransactions(data, dates), 'D'),
               )
             : ''
         }
@@ -70,10 +68,7 @@ const createRowFooter = (data, dates, transCategory) => `
         ${
           !!data
             ? getFormatedNumber(
-                getTransactionsSolde(
-                  getTransactionLessThan(data, dates.dateTo),
-                  'R',
-                ),
+                getTransactionsSolde(filterTransactions(data, dates), 'R'),
               )
             : ''
         }
@@ -85,12 +80,32 @@ const createRowFooter = (data, dates, transCategory) => `
         ${
           !!data
             ? getFormatedNumber(
-                getTransactionsSolde(
-                  getTransactionLessThan(data, dates.dateTo),
-                ),
+                getTransactionsSolde(filterTransactions(data, dates)),
               )
             : ''
         }
+      </span>
+    </td>
+  </tr>
+
+   <tr>
+    <th class="tg-49qb" colspan="2">Total Général/${
+      transCategory === 'C' ? 'Crédit' : 'Epargne'
+    }</th>
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${!!data ? getFormatedNumber(getTransactionsSolde(data, 'D')) : ''}
+      </span>
+    </td>
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${!!data ? getFormatedNumber(getTransactionsSolde(data, 'R')) : ''}
+      </span>
+    </td>
+
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${!!data ? getFormatedNumber(getTransactionsSolde(data)) : ''}
       </span>
     </td>
   </tr>
@@ -105,6 +120,7 @@ const createTable = ({admin, transaction}, dates) => {
   const reportTransactions = getTransactionLessThan(
     transaction,
     dates.dateFrom,
+    false,
   );
   return !!filtredTransactions?.length || reportTransactions?.length
     ? `
@@ -274,7 +290,7 @@ const createHtml = (data, dates, transCategory) => `
 
           counter-increment: page;
 
-          @top {
+          top {
             content: 'Page ' counter(page) ' of ' counter(pages) ' pages ';
           }
         }
@@ -442,30 +458,28 @@ const createHtml = (data, dates, transCategory) => `
           font-size: 12px;
         }
 
-        .label th{
+        .label th {
           padding: 5px;
         }
-        .label th.center{
+        .label th.center {
           padding-top: 20px;
         }
 
-        .label th.report{
+        .label th.report {
           text-align: left;
         }
-
       </style>
     </head>
     <body>
       <div id="header">
         <div class="title">
           <p class="date">Kinshasa, le ${getFormatedDate(new Date())}</p>
-          <h3>BALANCE DETAILLEE DES ${
-            transCategory === 'C' ? 'CREDIT' : 'EPARGNE'
-          }
-          <br>DU ${getFormatedDate(dates.dateFrom)} AU ${getFormatedDate(
-  dates.dateTo,
-)}
-        
+          <h3>
+            BALANCE DETAILLEE DES
+            ${transCategory === 'C' ? 'CREDIT' : 'EPARGNE'} <br />DU
+            ${getFormatedDate(dates.dateFrom)} AU
+            ${getFormatedDate(dates.dateTo)}
+          </h3>
         </div>
       </div>
       <table class="tg">

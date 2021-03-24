@@ -13,6 +13,10 @@ import {NavigationContainer} from '@react-navigation/native';
 import NetInfo from '@react-native-community/netinfo';
 import {useSelector, useDispatch} from 'react-redux';
 
+import * as eva from '@eva-design/eva';
+import {ApplicationProvider, IconRegistry} from '@ui-kitten/components';
+import {EvaIconsPack} from '@ui-kitten/eva-icons';
+
 import {ThemeProvider} from 'styled-components/native';
 import LoginScreen from '../screens/LoginScreen';
 import {
@@ -86,31 +90,34 @@ const StackNavigator = () => {
         animated={true}
         backgroundColor={theme.colors.primary}
       />
+      <IconRegistry icons={EvaIconsPack} />
       <NavigationContainer theme={theme}>
         <PaperProvider theme={theme}>
-          <ThemeProvider theme={theme}>
-            <ImageBackground style={{flex: 1}}>
-              <Stack.Navigator>
-                {!loginState.success ? (
-                  <Stack.Screen
-                    name="Login"
-                    options={{
-                      headerShown: false,
-                    }}
-                    component={LoginScreen}
-                  />
-                ) : (
-                  <Stack.Screen
-                    name="Main"
-                    options={{
-                      headerShown: false,
-                    }}
-                    component={HomeDrawerNavigator}
-                  />
-                )}
-              </Stack.Navigator>
-            </ImageBackground>
-          </ThemeProvider>
+          <ApplicationProvider {...eva} theme={eva.light}>
+            <ThemeProvider theme={theme}>
+              <ImageBackground style={{flex: 1}}>
+                <Stack.Navigator>
+                  {!loginState.success ? (
+                    <Stack.Screen
+                      name="Login"
+                      options={{
+                        headerShown: false,
+                      }}
+                      component={LoginScreen}
+                    />
+                  ) : (
+                    <Stack.Screen
+                      name="Main"
+                      options={{
+                        headerShown: false,
+                      }}
+                      component={HomeDrawerNavigator}
+                    />
+                  )}
+                </Stack.Navigator>
+              </ImageBackground>
+            </ThemeProvider>
+          </ApplicationProvider>
         </PaperProvider>
       </NavigationContainer>
       <Snackbar

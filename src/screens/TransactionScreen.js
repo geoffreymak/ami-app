@@ -1,4 +1,4 @@
-import React, {useMemo, useState, useEffect, useCallback} from 'react';
+import React, {useMemo, useState, useEffect, memo, useCallback} from 'react';
 import {
   StyleSheet,
   Linking,
@@ -23,19 +23,20 @@ import {
   ProgressBar,
   HelperText,
   FAB,
+  Dialog,
 } from 'react-native-paper';
 import {useFocusEffect} from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import numeral from 'numeral';
-import moment from 'moment';
+
+import {connect} from 'react-redux';
 
 import Layout from '../components/Layout';
 import Table from '../components/Table';
 
-import {connect} from 'react-redux';
-
 import {
   addTransaction,
+  addMise,
   getTransaction,
   updateTransaction,
   deleteTransaction,
@@ -48,24 +49,24 @@ import getFormatedNumber from '../utils/formating/getFormatedNumber';
 import useSnackbar from '../utils/hooks/useSnackbar';
 //import Autocomplete from 'react-native-textinput-material-autocomplete';
 
-const ITEM_PER_PAGE = 5;
-let unsubscribeTransaction = null;
-const TransactionScreen = (props) => {
-  const {
-    navigation,
-    route,
-    addTransaction,
-    getTransaction,
-    updateTransaction,
-    transactionsState,
-    admin,
-    admins,
-    deleteTransaction,
-    settings,
-    members,
-  } = props;
+import {Icon, IndexPath, Select, SelectItem} from '@ui-kitten/components';
 
+const ITEM_PER_PAGE = 5;
+
+const LockIcon = (props) => <Icon {...props} name="lock" />;
+const UnlockIcon = (props) => <Icon {...props} name="unlock" />;
+
+const TransactionScreen = memo(({
+  navigation,
+  route,
+  addTransaction,
+  addMise,
+  transactionsState,
+  admin,
+  admins,
+}) => {
   const [montant, setMontant] = useState(null);
+  const [mise, setMise] = useState(null);
   const [type, setType] = useState('D');
   const [transCategory, setTransCategory] = useState('E');
   const [date, setDate] = useState(new Date());
@@ -73,9 +74,16 @@ const TransactionScreen = (props) => {
   const [expanded, setExpanded] = useState(false);
   const [updateTrans, setUpdateTrans] = useState(null);
   const [montantError, setMontantError] = useState(null);
-  const {member} = route.params;
+  const [transactions, setTransactions] = useState([]);
+  const [openAddMiseDialog, setOpenAddMiseDialog] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(new IndexPath(0));
   const theme = useTheme();
   const {showSnackbar, checkConnection} = useSnackbar();
+  const {member} = route.params;
+  const {success, loading} = transactionsState.adding;
+
+  const sowAddMiseDialog = () => setOpenAddMiseDialog(true);
+  const hideAddMiseDialog = () => setOpenAddMiseDialog(false);
   const handleAccordionInfoPress = () => setExpanded(!expanded);
   const handleAccordionTransPress = (expandedId) => {
     setTransCategory(expandedId);
@@ -87,25 +95,20 @@ const TransactionScreen = (props) => {
     setShowDate(false);
   };
 
-  const {success, loading} = transactionsState.adding;
+  const _pressCall = (phone) => {
+    const url = `tel://${phone}`;
+    Linking.openURL(url);
+  };
 
   const handleReset = () => {
     setMontant(null);
     setType('D');
+    setMise(null);
     setDate(new Date());
     setUpdateTrans(null);
     setMontantError(null);
+    hideAddMiseDialog();
   };
-
-  const handleUnsubscribeTransaction = () => {
-    typeof unsubscribeTransaction === 'function' && unsubscribeTransaction();
-  };
-
-  useEffect(() => {
-    if (!!member) {
-      getTransaction(member, transCategory);
-    }
-  }, [member, transCategory]);
 
   useEffect(() => {
     if (success) {
@@ -119,28 +122,30 @@ const TransactionScreen = (props) => {
       // Do something when the screen is focused
       return () => {
         handleReset();
-        navigation.setParams({member: null});
-        handleUnsubscribeTransaction();
+        /* navigation.setParams({member: null});*/
       };
     }, []),
   );
 
-  const transactions = useMemo(() => {
-    if (
-      !!transactionsState.data &&
-      !!member &&
-      transactionsState.data.hasOwnProperty(member.compte)
-    ) {
-      return transactionsState.data[member.compte];
+  const mises = useMemo(() => {
+    if (!!transactionsState.data && !!member) {
+      return transactionsState.data.filter(
+        (t) => t.compte === member.compte && t.category === transCategory,
+      );
     } else {
       return [];
     }
-  }, [transactionsState, member]);
+  }, [transactionsState, member, transCategory]);
 
-  const _pressCall = (phone) => {
-    const url = `tel://${phone}`;
-    Linking.openURL(url);
-  };
+  useEffect(() => {
+    const transactions = mises[selectedIndex.row]?.transactions;
+    setTransactions(transactions);
+  }, [mises, selectedIndex]);
+
+  const currentMise = useMemo(() => {
+    const mise = mises[selectedIndex.row];
+    return mise;
+  }, [mises, selectedIndex]);
 
   const handleTransactionUpdatePress = useCallback(
     (transaction) => {
@@ -154,20 +159,51 @@ const TransactionScreen = (props) => {
     [admin],
   );
 
+  const handleAddMisePress = useCallback(() => {
+    if (!checkConnection()) return;
+    if (!!numeral(mise).value()) {
+      const parsedMontant = numeral(mise).value();
+      if (!!admin && !!member && !!transCategory) {
+        const data = {
+          compte: member.code,
+          code_admin: admin.code,
+          isActive: true,
+          addTimestamp: new Date().getTime(),
+          addDate: new Date().toISOString(),
+          mise: parsedMontant,
+          category: transCategory,
+          transactions: [],
+        };
+        addMise(data);
+      }
+    }
+  }, [admin, member, mise, transCategory]);
+
   const handleDeleteTransaction = useCallback(() => {
     if (admin.attribut === 'A1' && !!updateTrans) {
-      deleteTransaction(updateTrans);
+      const newTrans = currentMise.transactions.filter(
+        (t) => t.id !== updateTrans.id,
+      );
+      const solde = getTransactionsSolde(newTrans);
+      const mise = currentMise?.mise;
+
+      const data = {
+        ...currentMise,
+        isActive: solde > mise,
+        transactions: newTrans,
+      };
+      addTransaction(data);
     }
-  }, [admin, updateTrans]);
+  }, [admin, updateTrans, currentMise]);
 
   const onAddOrUpdate = useCallback(() => {
     if (!checkConnection()) return;
-    if (!!numeral(montant).value()) {
+    if (!!numeral(montant).value() && !!currentMise) {
       const parsedMontant = numeral(montant).value();
-
+      let isActive = true;
       if (type === 'R' && transCategory === 'E') {
-        const solde = getTransactionsSolde(transactions, null, transCategory);
-        const mise = member && member.mise;
+        const solde = getTransactionsSolde(currentMise.transactions);
+        const mise = currentMise?.mise;
         const retraitPossible = solde - mise;
 
         if (parsedMontant > retraitPossible) {
@@ -180,34 +216,55 @@ const TransactionScreen = (props) => {
           setMontantError(message);
           return;
         }
+
+        if (!updateTrans) {
+          if (solde - parsedMontant === mise) isActive = false;
+        } else {
+          if (solde - parsedMontant * 2 === mise) isActive = false;
+        }
       }
 
+      let data;
       if (!updateTrans) {
-        const data = {
+        const newTrans = {
+          id: Math.floor(
+            Math.random() * Math.floor(Math.random() * Date.now()),
+          ).toString(),
           montant: parsedMontant,
           date: new Date(date || new Date()).toISOString(),
-          addTimestamp: new Date(date || new Date()).getTime(),
-          compte: member.compte,
-          code_admin: admin.code,
-          category: transCategory,
           type,
         };
-        addTransaction(data);
+        data = {
+          ...currentMise,
+          isActive,
+          transactions: [...currentMise.transactions, newTrans],
+        };
       } else {
-        const data = {
+        const newTrans = {
           montant: parsedMontant,
           updatedTimestamp: new Date().getTime(),
           updatedDate: new Date().toISOString(),
           code_admin_update: admin.code,
-          category: transCategory,
           type,
         };
-        updateTransaction(admin, updateTrans, data);
+        data = {
+          ...currentMise,
+          updatedTimestamp: new Date().getTime(),
+          updatedDate: new Date().toISOString(),
+          code_admin_update: admin.code,
+          category: transCategory,
+          isActive,
+          transactions: currentMise.transactions.map((t) => {
+            if (t.id === updateTrans.id) return {...t, ...newTrans};
+            return t;
+          }),
+        };
       }
+      addTransaction(data);
     } else {
       setMontantError('Entrez un montant valide !');
     }
-  }, [admin, updateTrans, member, montant, date, type, transCategory]);
+  }, [admin, updateTrans, montant, currentMise, date, type, transCategory]);
 
   const getTransactionType = (type) => (type === 'D' ? 'Dépot' : 'Rétrait');
 
@@ -231,16 +288,6 @@ const TransactionScreen = (props) => {
         <ScrollView>
           <Layout>
             <Card style={{marginBottom: 10}}>
-              {/* <Autocomplete
-                array={members}
-                field="nom"
-                label="nom"
-                value={(val) => {}}
-                error={() => {
-                  console.log('field invalid');
-                }}>
-                {' '}
-              </Autocomplete> */}
               <List.Item
                 onPress={() => {}}
                 title={member?.nom}
@@ -313,7 +360,7 @@ const TransactionScreen = (props) => {
                 <Divider />
                 <List.Item
                   style={{paddingLeft: 15}}
-                  title="Mise :"
+                  title="Activité :"
                   right={(props) => (
                     <Text
                       {...props}
@@ -322,7 +369,7 @@ const TransactionScreen = (props) => {
                         marginRight: 10,
                         color: theme.colors.placeholder,
                       }}>
-                      {getFormatedNumber(member?.mise)}
+                      {member?.activite}
                     </Text>
                   )}
                 />
@@ -382,9 +429,7 @@ const TransactionScreen = (props) => {
 
             <Card style={{marginBottom: 10}}>
               <Card.Title
-                title={
-                  !updateTrans ? 'Transaction' : 'Modifier une transaction'
-                }
+                title={!updateTrans ? 'Transaction' : 'Modifier la transaction'}
               />
               <Divider />
               <Card.Content>
@@ -400,6 +445,10 @@ const TransactionScreen = (props) => {
                     onChangeText={(text) => setMontant(text)}
                     keyboardType="numeric"
                     dense
+                    disabled={
+                      (admin.attribut === 'A3' && !currentMise?.isActive) ||
+                      !mises?.length
+                    }
                     error={!!montantError}
                     style={{flex: 1}}
                   />
@@ -444,6 +493,71 @@ const TransactionScreen = (props) => {
                   />
                 </View>
 
+                <View
+                  style={{
+                    marginTop: 15,
+                    marginBottom: 10,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}>
+                  <View style={{flex: 1}}>
+                    <Text
+                      style={{
+                        color: theme.colors.placeholder,
+                        marginBottom: 5,
+                      }}>
+                      Mise :
+                    </Text>
+
+                    <Select
+                      style={{
+                        backgroundColor: theme.colors.background,
+                      }}
+                      status="success"
+                      placeholder="Choisir la mise"
+                      size="medium"
+                      selectedIndex={selectedIndex}
+                      onSelect={(index) => setSelectedIndex(index)}
+                      value={
+                        <Text
+                          style={{
+                            color: theme.colors.placeholder,
+                          }}>
+                          {mises?.length
+                            ? `${getFormatedNumber(
+                                mises[selectedIndex.row]?.mise,
+                              )} | ${getFormatedDate(
+                                mises[selectedIndex.row]?.addTimestamp,
+                              )}`
+                            : 'Ajoutez une mise !'}
+                        </Text>
+                      }>
+                      {mises?.map((t) => (
+                        <SelectItem
+                          key={t.code}
+                          accessoryRight={t.isActive ? UnlockIcon : LockIcon}
+                          title={`${getFormatedNumber(
+                            t.mise,
+                          )} | ${getFormatedDate(t.addTimestamp)}`}
+                        />
+                      ))}
+                    </Select>
+                  </View>
+                  <View style={{marginLeft: 10, marginTop: 28}}>
+                    <FAB
+                      style={{
+                        backgroundColor: Colors.green700,
+                        marginRight: 10,
+                        color: 'fff',
+                      }}
+                      onPress={sowAddMiseDialog}
+                      color={Colors.white}
+                      small
+                      icon="plus"
+                    />
+                  </View>
+                </View>
                 <View style={{marginTop: 15, marginBottom: 10}}>
                   <Text style={{color: theme.colors.placeholder}}>
                     Catégorie de la transactions
@@ -578,9 +692,6 @@ const TransactionScreen = (props) => {
                     </List.Accordion>
                   </List.AccordionGroup>
                 </View>
-
-                {/*
-                 */}
               </Card.Content>
               <Divider />
               <Card.Actions style={{justifyContent: 'flex-end'}}>
@@ -612,7 +723,11 @@ const TransactionScreen = (props) => {
                     backgroundColor: Colors.green500,
                     width: 115,
                   }}
-                  disabled={loading}
+                  disabled={
+                    loading ||
+                    (admin.attribut === 'A3' && !currentMise?.isActive) ||
+                    !mises?.length
+                  }
                   loading={loading}
                   onPress={onAddOrUpdate}
                   mode="contained">
@@ -668,7 +783,7 @@ const TransactionScreen = (props) => {
               onRowPress={handleTransactionUpdatePress}
               selectedRowOptions={{
                 item: updateTrans,
-                field: 'code',
+                field: 'id',
               }}
             />
           </Layout>
@@ -686,9 +801,53 @@ const TransactionScreen = (props) => {
           onChange={onDateChange}
         />
       )}
+      <Dialog visible={openAddMiseDialog} onDismiss={hideAddMiseDialog}>
+        <Dialog.Title>Ajouter une mise</Dialog.Title>
+        <Dialog.ScrollArea>
+          <View style={{marginVertical: 12}}>
+            <TextInput
+              mode="outlined"
+              label="Mise"
+              dense
+              value={
+                !!numeral(mise).value()
+                  ? numeral(mise).format('0,0[.]00')
+                  : null
+              }
+              onChangeText={(text) => setMise(text)}
+              keyboardType="numeric"
+            />
+          </View>
+
+          {/*  <View style={{marginVertical: 12, marginBottom: 20}}>
+            <TextInput
+              mode="outlined"
+              label="Intitulé"
+              dense
+              value={intitule}
+              onChangeText={(text) => setIntitule(text)}
+              maxLength={5}
+            />
+          </View> */}
+        </Dialog.ScrollArea>
+        <Dialog.Actions>
+          <Button
+            disabled={loading}
+            loading={loading}
+            onPress={hideAddMiseDialog}>
+            annuler
+          </Button>
+          <Button
+            disabled={loading}
+            loading={loading}
+            onPress={handleAddMisePress}>
+            confirmer
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
     </>
   );
-};
+})
 
 const mapStateToProps = (state) => ({
   transactionsState: state.transactions,
@@ -703,6 +862,7 @@ export default connect(mapStateToProps, {
   getTransaction,
   updateTransaction,
   deleteTransaction,
+  addMise,
 })(TransactionScreen);
 
 const styles = StyleSheet.create({

@@ -1,5 +1,6 @@
 import ActiveMembersList from './ActiveMembersList';
-import DailyBalance from './DailyBalance';
+import TransactionBalance from './TransactionBalance';
 import MembersCard from './MembersCard';
+import MiseBalance from './MiseBalance';
 
-export {ActiveMembersList, DailyBalance, MembersCard};
+export {ActiveMembersList, TransactionBalance, MiseBalance, MembersCard};

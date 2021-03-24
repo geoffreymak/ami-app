@@ -9,12 +9,40 @@ export const ADD_TRANSACTION = 'ADD_TRANSACTION';
 export const SET_TRANSACTIONS = 'SET_TRANSACTIONS';
 export const DELETE_TRANSACTION = 'DELETE_TRANSACTION';
 
+const MISE_PREFIX_E = 'MS1';
+const MISE_PREFIX_C = 'MS2';
 export function setMembersData(data) {
   return (dispatch) => {
     dispatch({
       type: SET_MEMBERS_DATA,
       data,
     });
+  };
+}
+
+export function watchTransactions() {
+  return (dispatch, getState) => {
+    const db = firestore();
+    const {data: admin} = getState().admin;
+    if (!admin) return;
+
+    let query = db.collection('transactions_v2');
+    //query = query.where('compte', '==', member.compte);
+    if (admin.attribut === 'A3') {
+      query = query.where('code_admin', '==', admin.code);
+    }
+    query.onSnapshot(
+      (querySnapshot) => {
+        const transaction = querySnapshot.docs.map(function (doc) {
+          return doc.data();
+        });
+        dispatch({
+          type: SET_TRANSACTION_DATA,
+          data: transaction,
+        });
+      },
+      (error) => {},
+    );
   };
 }
 
@@ -89,53 +117,48 @@ export function getTransactions(admin, transCategory) {
   };
 }
 
-export function addTransaction(transaction) {
+export function addMise(mise) {
   return (dispatch) => {
     dispatch({
       type: ADD_TRANSACTION_LOADING,
     });
     const db = firestore();
-    db.collection('transactions')
-      .add(transaction)
+    db.collection('transactions_v2')
+      .add(mise)
       .then((docRef) => {
-        return db
-          .collection('members')
-          .doc(transaction.compte)
-          .update({isActive: true})
-          .then(() => {
-            return docRef.update({
-              code: docRef.id,
-              timestamp: new Date().getTime(),
-              date_firebase: firestore.FieldValue.serverTimestamp(),
-            });
-          })
-          .then(() => {
-            return db
-              .collection('transactions')
-              .doc(docRef.id)
-              .get()
-              .then((doc) => {
-                if (doc.exists) {
-                  dispatch({
-                    type: ADD_TRANSACTION,
-                    data: doc.data(),
-                  });
-                }
-              });
-          });
+        console.log('add mise...');
+        return docRef.update({
+          code: docRef.id,
+          date_firebase: firestore.FieldValue.serverTimestamp(),
+        });
       })
       .then(() => {
-        if (transaction.type === 'D') {
-          db.collection('transactions_admin')
-            .add(transaction)
-            .then((docRef) => {
-              return docRef.update({
-                code: docRef.id,
-                timestamp: new Date().getTime(),
-                date_firebase: firestore.FieldValue.serverTimestamp(),
-              });
-            });
-        }
+        dispatch({
+          type: ADD_TRANSACTION_SUCCESS,
+        });
+      })
+      .catch((error) => {
+        console.error('Error adding mise: ', error);
+        dispatch({
+          type: ADD_TRANSACTION_ERROR,
+          data: error,
+        });
+      });
+  };
+}
+
+export function addTransaction(data) {
+  return (dispatch) => {
+    dispatch({
+      type: ADD_TRANSACTION_LOADING,
+    });
+
+    const db = firestore();
+    db.collection('transactions_v2')
+      .doc(data.code)
+      .update(data)
+      .then(() => {
+        console.log('Document successfully added!');
         dispatch({
           type: ADD_TRANSACTION_SUCCESS,
         });

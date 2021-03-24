@@ -1,11 +1,11 @@
-import React, {useState} from 'react';
+import React, {useState, memo} from 'react';
 import {ScrollView, ImageBackground} from 'react-native';
 import {Appbar, Card, useTheme} from 'react-native-paper';
 
 import Layout from '../components/Layout';
 import ProfilCard from '../components/ProfilCard';
 
-const AccountScreen = ({navigation}) => {
+const AccountScreen = memo(({navigation}) => {
   const theme = useTheme();
   return (
     <>
@@ -30,6 +30,6 @@ const AccountScreen = ({navigation}) => {
       </ImageBackground>
     </>
   );
-};
+});
 
 export default AccountScreen;

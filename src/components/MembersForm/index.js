@@ -28,7 +28,6 @@ const defaultValues = {
   nom: '',
   adresse: '',
   telephone: '',
-  mise: '',
   activite: '',
 };
 
@@ -36,7 +35,6 @@ const defaultErrorValues = {
   nom: false,
   adresse: false,
   telephone: false,
-  mise: false,
   activite: false,
 };
 
@@ -76,7 +74,6 @@ export default function MembersForm({
         nom: updatedMember.nom,
         adresse: updatedMember.adresse,
         telephone: updatedMember.telephone,
-        mise: updatedMember.mise.toString(),
         activite: updatedMember.activite,
       });
     }
@@ -102,11 +99,6 @@ export default function MembersForm({
           hasEmptyField = true;
           errorValues = {...errorValues, [field]: 'Renseigner ce champ !'};
         }
-
-        if (field === 'mise' && !parseFloat(value)) {
-          hasEmptyField = true;
-          errorValues = {...errorValues, mise: 'La mise est incorrect !'};
-        }
       }
     }
     setError(errorValues);
@@ -115,7 +107,6 @@ export default function MembersForm({
         const data = {
           ...values,
           isBlocked: false,
-          mise: parseFloat(values.mise),
           code_admin: admin.code,
           isSuper: admin.attribut === 'A1',
         };
@@ -123,7 +114,6 @@ export default function MembersForm({
       } else {
         const data = {
           ...values,
-          mise: parseFloat(values.mise),
           code_admin_update: admin.code,
         };
         onUpdate(updatedMember, data);
@@ -247,7 +237,7 @@ export default function MembersForm({
                   </HelperText>
                 </S.InputContainer>
 
-                <S.InputContainer>
+                {/*   <S.InputContainer>
                   <TextInput
                     mode="flat"
                     dense
@@ -265,7 +255,7 @@ export default function MembersForm({
                   <HelperText type="error" visible={!!error.mise}>
                     {error.mise}
                   </HelperText>
-                </S.InputContainer>
+                </S.InputContainer> */}
               </S.Card>
             </S.FormContainer>
 

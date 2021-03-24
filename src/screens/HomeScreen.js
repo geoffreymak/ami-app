@@ -1,4 +1,4 @@
-import React, {useEffect, useState, memo, useCallback} from 'react';
+import React, {useEffect, useState, memo, useRef, useCallback} from 'react';
 import {Dimensions, View, ImageBackground} from 'react-native';
 
 import {connect} from 'react-redux';
@@ -6,6 +6,7 @@ import {getMembers, setMemberUpdate} from '../redux/actions/membersActions';
 import {getAdmins} from '../redux/actions/adminActions';
 import {logoutAdmin} from '../redux/actions/loginActions';
 import {getSettins} from '../redux/actions/settingActions';
+import {watchTransactions} from '../redux/actions/transactionActions';
 
 import {Appbar, FAB, useTheme, Colors} from 'react-native-paper';
 
@@ -29,13 +30,19 @@ const HomeScreen = memo((props) => {
     logoutAdmin,
     getSettins,
     loginState,
+    watchTransactions,
   } = props;
 
+  const appInitialized = useRef(false);
+
   useEffect(() => {
-    if (!!admin && !!loginState.success) {
+    if (!!admin && !!loginState.success && !appInitialized.current) {
+      console.log('initialized app !');
       getSettins();
+      watchTransactions();
       getMembers(admin);
       getAdmins(admin);
+      appInitialized.current = true;
     }
   }, [admin]);
 
@@ -169,4 +176,5 @@ export default connect(mapStateToProps, {
   logoutAdmin,
   setMemberUpdate,
   getSettins,
+  watchTransactions,
 })(HomeScreen);

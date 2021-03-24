@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState, useRef} from 'react';
+import React, {useCallback, useEffect, useState, useRef, memo} from 'react';
 import {
   StyleSheet,
   Dimensions,
@@ -18,17 +18,27 @@ import {Appbar, Surface, useTheme, Paragraph, Colors} from 'react-native-paper';
 import {FileSystem} from 'react-native-unimodules';
 
 import generateReport from '../utils/reports/generateReport';
+import getMiseSolde from '../utils/transactions/getMiseSolde';
+import mergeTransactionFromMise from '../utils/transactions/mergeTransactionFromMise';
 
 import {getTransactions} from '../redux/actions/transactionActions';
 
 import Loading from '../components/Loading';
-const fileType =
+
+import {
+  ACTIVE_MEMBERS_LIST,
+  MEMBERS_CARD,
+  TRANSACTION_BALANCE,
+  MISE_BALANCE,
+} from '../components/ReportDialog';
+
+const FILE_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
-const fileExtension = '.xlsx';
+const FILE_EXTENTION = '.xlsx';
 
 //onst HtmlTableToJson = require('html-table-to-json');
 
-const ReportScreen = (props) => {
+const ReportScreen = memo((props) => {
   const {navigation, route} = props;
   const {data: reportData} = route.params;
   const theme = useTheme();
@@ -40,7 +50,8 @@ const ReportScreen = (props) => {
   const admin = useSelector((state) => state.admin.data);
   const admins = useSelector((state) => state.admin.list);
   const members = useSelector((state) => state.members.data);
-  const transactions = useSelector((state) => state.transactions.list);
+  const transactions = useSelector((state) => state.transactions.data);
+  const mises = useSelector((state) => state.transactions.data);
 
   useFocusEffect(
     useCallback(() => {
@@ -52,14 +63,10 @@ const ReportScreen = (props) => {
     }, []),
   );
 
-  const transactionsLoadingState = useSelector(
-    (state) => state.transactions.adding,
-  );
-
-  const getBalanceData = useCallback(() => {
+  const getAdminTransData = useCallback(() => {
     let adminsTransaction = [];
     if (admin && admin.attribut === 'A3') {
-      const adminTrans = transactions
+      const adminTrans = mergeTransactionFromMise(mises)
         .filter((transaction) => transaction.code_admin === admin.code)
         .map((transaction) => {
           const memberName = members.find(
@@ -68,10 +75,12 @@ const ReportScreen = (props) => {
           return {...transaction, memberName};
         });
 
-      adminsTransaction = [{admin, transaction: adminTrans}];
+      if (!!adminTrans?.length) {
+        adminsTransaction = [{admin, transaction: adminTrans}];
+      }
     } else {
       admins.forEach((admin) => {
-        const adminTrans = transactions
+        const adminTrans = mergeTransactionFromMise(mises)
           .filter((transaction) => transaction.code_admin === admin.code)
           .map((transaction) => {
             const memberName = members.find(
@@ -80,31 +89,148 @@ const ReportScreen = (props) => {
             return {...transaction, memberName};
           });
 
+        if (!!adminTrans?.length) {
+          adminsTransaction = [
+            ...adminsTransaction,
+            {admin, transaction: adminTrans},
+          ];
+        }
+      });
+
+      const superAdminTrans = mergeTransactionFromMise(mises)
+        .filter((transaction) => transaction.code_admin === admin.code)
+        .map((transaction) => {
+          const memberName = members.find(
+            (member) => member.compte === transaction.compte,
+          )?.nom;
+          return {...transaction, memberName};
+        });
+
+      if (!!superAdminTrans?.length) {
         adminsTransaction = [
           ...adminsTransaction,
-          {admin, transaction: adminTrans},
+          {admin, transaction: superAdminTrans},
         ];
-      });
+      }
     }
-
     return adminsTransaction;
-  }, [transactions, members, admins, admin]);
+  }, [mises, members, admins, admin]);
 
-  const getMembersCardData = useCallback(() => {
+  const getAdminMiseData = useCallback(() => {
+    let adminsMise = [];
+    if (admin && admin.attribut === 'A3') {
+      let cleanedMises = {};
+      mises
+        .filter((mise) => mise.code_admin === admin.code)
+        .forEach((mise) => {
+          const member = members.find(
+            (member) => member.compte === mise.compte,
+          );
+          const memberMises = mises.filter(
+            (mise) => mise.compte === member?.compte,
+          );
+          if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
+            const solde = getMiseSolde(memberMises, reportData.transCategory);
+            cleanedMises = {
+              ...cleanedMises,
+              [member?.compte]: {...mise, solde, member},
+            };
+          }
+        });
+
+      const data = Object.values(cleanedMises);
+      if (!!data?.length) {
+        adminsMise = [{admin, mise: data}];
+      }
+    } else {
+      admins.forEach((admin) => {
+        let cleanedMises = {};
+        mises
+          .filter((mise) => mise.code_admin === admin.code)
+          .forEach((mise) => {
+            const member = members.find(
+              (member) => member.compte === mise.compte,
+            );
+            const memberMises = mises.filter(
+              (mise) => mise.compte === member?.compte,
+            );
+
+            if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
+              const solde = getMiseSolde(memberMises, reportData.transCategory);
+              cleanedMises = {
+                ...cleanedMises,
+                [member?.compte]: {...mise, solde, member},
+              };
+            }
+          });
+
+        const data = Object.values(cleanedMises);
+        if (!!data?.length) {
+          adminsMise = [...adminsMise, {admin, mise: data}];
+        }
+      });
+
+      let cleanedMises = {};
+      mises
+        .filter((mise) => mise.code_admin === admin.code)
+        .forEach((mise) => {
+          const member = members.find(
+            (member) => member.compte === mise.compte,
+          );
+          const memberMises = mises.filter(
+            (mise) => mise.compte === member?.compte,
+          );
+
+          if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
+            const solde = getMiseSolde(memberMises, reportData.transCategory);
+            cleanedMises = {
+              ...cleanedMises,
+              [member?.compte]: {...mise, solde, member},
+            };
+          }
+        });
+
+      const data = Object.values(cleanedMises);
+      if (!!data?.length) {
+        adminsMise = [...adminsMise, {admin, mise: data}];
+      }
+    }
+    return adminsMise;
+  }, [mises, members, admins, admin, reportData.transCategory]);
+
+  const getMembersTransData = useCallback(() => {
     let membersTransaction = [];
     members.forEach((member) => {
-      const memberTrans = transactions.filter(
+      const memberTrans = mergeTransactionFromMise(mises).filter(
         (transaction) => transaction.compte === member.compte,
       );
-
-      membersTransaction = [
-        ...membersTransaction,
-        {member, transaction: memberTrans},
-      ];
+      if (!!memberTrans?.length) {
+        membersTransaction = [
+          ...membersTransaction,
+          {member, transaction: memberTrans},
+        ];
+      }
     });
-
     return membersTransaction;
-  }, [transactions, members]);
+  }, [mises, members]);
+
+  const getTransactionsData = useCallback(() => {
+    switch (reportData.report) {
+      case ACTIVE_MEMBERS_LIST:
+      case MEMBERS_CARD: {
+        return getMembersTransData();
+      }
+      case TRANSACTION_BALANCE: {
+        return getAdminTransData();
+      }
+      case MISE_BALANCE: {
+        return getAdminMiseData();
+      }
+      default: {
+        break;
+      }
+    }
+  }, [reportData, getAdminTransData, getMembersTransData, getAdminMiseData]);
 
   const exportToCSV = async (table) => {
     const ws = XLSX.utils.json_to_sheet(table);
@@ -120,7 +246,7 @@ const ReportScreen = (props) => {
       message: 'Envoi des fichier',
       title: 'Envoi des fichier excel',
       url: uri,
-      type: fileType,
+      type: FILE_TYPE,
     };
 
     //Share.open(options);
@@ -131,11 +257,8 @@ const ReportScreen = (props) => {
       setLoading(true);
       isLoaded.current = true;
       try {
-        const data =
-          reportData.report === 'DailyBalance'
-            ? getBalanceData()
-            : getMembersCardData();
-
+        const data = getTransactionsData();
+        console.log('TransactionsData', data);
         const start = new Date().getTime();
         const [pdfUriB64, pdfUri, html] = await generateReport(
           data,
@@ -154,17 +277,17 @@ const ReportScreen = (props) => {
       }
     };
 
-    if (transactionsLoadingState.success && isLoaded.current === false) {
+    if (isLoaded.current === false) {
       fetchData();
     }
-  }, [transactionsLoadingState.success, loading, getBalanceData, reportData]);
+  }, [reportData, admins, getTransactionsData]);
 
-  useEffect(() => {
+  /* useEffect(() => {
     if (!!reportData && !!admin) {
       dispatch(getTransactions(admin, reportData.transCategory));
       console.log('getTransactions', reportData.transCategory);
     }
-  }, [reportData, admin]);
+  }, [reportData, admin]); */
 
   const onPrint = useCallback(async () => {
     if (pdfUri) {
@@ -253,7 +376,7 @@ const ReportScreen = (props) => {
       {/*pdfUri && <PDFReader source={{uri: pdfUri}} />*/}
     </>
   );
-};
+});
 
 export default ReportScreen;
 

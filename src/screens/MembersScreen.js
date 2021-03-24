@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Appbar, Surface, TextInput} from 'react-native-paper';
 import {ImageBackground} from 'react-native';
 import MembersForm from '../components/MembersForm';
@@ -11,7 +11,7 @@ import {
   updateMember,
 } from '../redux/actions/membersActions';
 
-function MembersScreen(props) {
+const MembersScreen = memo((props) => {
   const {
     addMember,
     addingState,
@@ -48,7 +48,7 @@ function MembersScreen(props) {
       </ImageBackground>
     </>
   );
-}
+});
 
 const mapStateToProps = (state) => ({
   addingState: state.members.adding,
