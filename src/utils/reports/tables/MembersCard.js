@@ -35,7 +35,7 @@ const createRow = (transaction, index, transactions) => `
   </tr>
 `;
 
-const createTable = ({member, transaction}, admins, dates) => {
+const createTable = ({member, transaction, miseSolde}, admins, dates) => {
   const filtredTransactions = filterTransactions(transaction, dates);
   return filtredTransactions?.length
     ? `
@@ -60,7 +60,7 @@ const createTable = ({member, transaction}, admins, dates) => {
           <th class="tg-zufh">Mise:</th>
           <th class="tg-j1i3">
             <span style="font-weight:400;font-style:normal">
-              ${!!member ? getFormatedNumber(member.mise) : ''}
+              ${!!member ? getFormatedNumber(miseSolde[0]) : ''}
             </span>
           </th>
         </tr>

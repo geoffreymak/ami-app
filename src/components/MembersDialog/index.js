@@ -51,6 +51,11 @@ const MembersDialog = ({
 
   const onMemberClick = (member) => {
     if (!member) return;
+
+    if (dialogType === 'select') {
+      onDismiss(member, true);
+      return;
+    }
     if (dialogType === 'update') {
       setMemberUpdate(member);
       navigation.navigate('Members');

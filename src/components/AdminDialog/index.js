@@ -20,11 +20,22 @@ const AdminDialog = ({
   admins,
   setAdminUpdate,
   navigation,
+  dialogType,
 }) => {
   const [cleanedAdmins, setCleanedAdmins] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
   const onChangeSearch = (query) => setSearchQuery(query);
+
+  const onItemPress = (item) => {
+    if (dialogType === 'select') {
+      onDismiss(item, true);
+      return;
+    }
+    setAdminUpdate(item);
+    onDismiss();
+    navigation.navigate('Admin');
+  };
 
   useEffect(() => {
     if (!!admins && searchQuery.trim() !== '') {
@@ -40,11 +51,7 @@ const AdminDialog = ({
 
   const renderItem = ({item}) => (
     <List.Item
-      onPress={() => {
-        setAdminUpdate(item);
-        onDismiss();
-        navigation.navigate('Admin');
-      }}
+      onPress={() => onItemPress(item)}
       title={item?.nom}
       titleStyle={{textTransform: 'uppercase'}}
       description={getAttribut(item?.attribut)}

@@ -65,20 +65,23 @@ const ReportScreen = memo((props) => {
 
   const getAdminTransData = useCallback(() => {
     let adminsTransaction = [];
-    if (admin && admin.attribut === 'A3') {
-      const adminTrans = mergeTransactionFromMise(mises)
-        .filter((transaction) => transaction.code_admin === admin.code)
-        .map((transaction) => {
-          const memberName = members.find(
-            (member) => member.compte === transaction.compte,
-          )?.nom;
-          return {...transaction, memberName};
-        });
+    const selectedAdmin =
+      admin?.attribut === 'A3' ? admin : reportData.selectedItem;
+    const adminTrans = mergeTransactionFromMise(mises, reportData.transCategory)
+      .filter((transaction) => transaction.code_admin === selectedAdmin.code)
+      .map((transaction) => {
+        const memberName = members.find(
+          (member) => member.compte === transaction.compte,
+        )?.nom;
+        return {...transaction, memberName};
+      });
 
-      if (!!adminTrans?.length) {
-        adminsTransaction = [{admin, transaction: adminTrans}];
-      }
-    } else {
+    if (!!adminTrans?.length) {
+      adminsTransaction = [{admin: selectedAdmin, transaction: adminTrans}];
+    }
+    if (admin && admin.attribut === 'A3') {
+    }
+    /*  else {
       admins.forEach((admin) => {
         const adminTrans = mergeTransactionFromMise(mises)
           .filter((transaction) => transaction.code_admin === admin.code)
@@ -112,13 +115,37 @@ const ReportScreen = memo((props) => {
           {admin, transaction: superAdminTrans},
         ];
       }
-    }
+    } */
     return adminsTransaction;
-  }, [mises, members, admins, admin]);
+  }, [mises, members, admins, admin, reportData]);
 
   const getAdminMiseData = useCallback(() => {
     let adminsMise = [];
-    if (admin && admin.attribut === 'A3') {
+    const selectedAdmin =
+      admin?.attribut === 'A3' ? admin : reportData.selectedItem;
+
+    let cleanedMises = {};
+    mises
+      .filter((mise) => mise.code_admin === selectedAdmin.code)
+      .forEach((mise) => {
+        const member = members.find((member) => member.compte === mise.compte);
+        const memberMises = mises.filter(
+          (mise) => mise.compte === member?.compte,
+        );
+        if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
+          const solde = getMiseSolde(memberMises, reportData.transCategory);
+          cleanedMises = {
+            ...cleanedMises,
+            [member?.compte]: {...mise, solde, member},
+          };
+        }
+      });
+
+    const data = Object.values(cleanedMises);
+    if (!!data?.length) {
+      adminsMise = [{admin: selectedAdmin, mise: data}];
+    }
+    /* if (admin && admin.attribut === 'A3') {
       let cleanedMises = {};
       mises
         .filter((mise) => mise.code_admin === admin.code)
@@ -194,31 +221,55 @@ const ReportScreen = memo((props) => {
       if (!!data?.length) {
         adminsMise = [...adminsMise, {admin, mise: data}];
       }
-    }
+    } */
     return adminsMise;
-  }, [mises, members, admins, admin, reportData.transCategory]);
+  }, [mises, members, admins, admin, reportData]);
 
-  const getMembersTransData = useCallback(() => {
+  const getMembersCardData = useCallback(() => {
     let membersTransaction = [];
     members.forEach((member) => {
+      const memberMises = mises.filter(
+        (mise) => mise.compte === member?.compte,
+      );
+      const miseSolde = getMiseSolde(memberMises, reportData.transCategory);
       const memberTrans = mergeTransactionFromMise(mises).filter(
         (transaction) => transaction.compte === member.compte,
       );
       if (!!memberTrans?.length) {
         membersTransaction = [
           ...membersTransaction,
-          {member, transaction: memberTrans},
+          {member, transaction: memberTrans, miseSolde},
         ];
       }
     });
     return membersTransaction;
-  }, [mises, members]);
+  }, [mises, members, reportData.transCategory]);
+
+  const getMembersListData = useCallback(() => {
+    let membersTransaction = [];
+    const membersData = getMembersCardData();
+    admins?.forEach((admin) => {
+      const memberTrans = membersData.filter(
+        (data) => admin.code === data?.member?.code_admin,
+      );
+
+      if (!!memberTrans?.length) {
+        membersTransaction = [
+          ...membersTransaction,
+          {admin, data: memberTrans},
+        ];
+      }
+    });
+    return membersTransaction;
+  }, [admins, getMembersCardData]);
 
   const getTransactionsData = useCallback(() => {
     switch (reportData.report) {
-      case ACTIVE_MEMBERS_LIST:
+      case ACTIVE_MEMBERS_LIST: {
+        return getMembersListData();
+      }
       case MEMBERS_CARD: {
-        return getMembersTransData();
+        return getMembersCardData();
       }
       case TRANSACTION_BALANCE: {
         return getAdminTransData();
@@ -230,7 +281,13 @@ const ReportScreen = memo((props) => {
         break;
       }
     }
-  }, [reportData, getAdminTransData, getMembersTransData, getAdminMiseData]);
+  }, [
+    reportData,
+    getAdminTransData,
+    getMembersCardData,
+    getAdminMiseData,
+    getMembersListData,
+  ]);
 
   const exportToCSV = async (table) => {
     const ws = XLSX.utils.json_to_sheet(table);

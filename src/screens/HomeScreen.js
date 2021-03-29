@@ -158,6 +158,7 @@ const HomeScreen = memo((props) => {
         navigation={navigation}
         members={members}
         admins={admins}
+        admin={admin}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import React, {useState, useCallback, memo} from 'react';
 
-import {ScrollView, View} from 'react-native';
+import {ScrollView, View, TouchableWithoutFeedback} from 'react-native';
+import {Autocomplete, AutocompleteItem, Icon} from '@ui-kitten/components';
 import {
   useTheme,
   Dialog,
@@ -18,9 +19,17 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 
+import AdminDialog from '../AdminDialog';
+import MembersDialog from '../MembersDialog';
+
 //import MultiSelect from 'react-native-multiple-select';
 
 //import getAttribut from '../../utils/admins/getAdminAttribut';
+
+const filter = (item, query) =>
+  item.nom.toLowerCase().includes(query.toLowerCase());
+
+const StarIcon = (props) => <Icon {...props} name="star" />;
 
 // !!no change value
 export const ACTIVE_MEMBERS_LIST = 'ActiveMembersList';
@@ -29,13 +38,14 @@ export const TRANSACTION_BALANCE = 'TransactionBalance';
 export const MISE_BALANCE = 'MiseBalance';
 
 const ReportDialog = memo(
-  ({visible, onDismiss, admins, members, navigation}) => {
+  ({visible, onDismiss, admin, admins, members, navigation}) => {
     const [dateFrom, setDateFrom] = useState(new Date());
     const [showDateFrom, setShowDateFrom] = useState(false);
     const [dateTo, setDateTo] = useState(new Date());
     const [showDateTo, setShowDateTo] = useState(false);
     const [openDateDialog, setOpenDateDialog] = useState(false);
-    const [openMemberDialog, setOpenMemberDialog] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [selectType, setSelectType] = useState(null);
     const [reportType, setReportType] = useState(null);
     const [transCategory, setTransCategory] = useState('E');
     const [loading, setLoading] = useState(false);
@@ -53,9 +63,21 @@ const ReportDialog = memo(
       setShowDateTo(false);
     };
 
+    const onItemSelect = (item, withItem) => {
+      if (!!withItem) {
+        setSelectedItem(item);
+        setOpenDateDialog(true);
+      }
+      setSelectType(null);
+    };
+
     const onReportPresse = (reportType) => async () => {
-      setOpenDateDialog(true);
       setReportType(reportType);
+      if (reportType === MEMBERS_CARD) {
+        setSelectType('member');
+      } else {
+        setSelectType('admin');
+      }
       onDismiss();
     };
 
@@ -67,11 +89,11 @@ const ReportDialog = memo(
       };
 
       navigation.navigate('Report', {
-        data: {dates, report: reportType, transCategory},
+        data: {dates, report: reportType, transCategory, selectedItem},
       });
       setLoading(false);
       setOpenDateDialog(false);
-    }, [dateFrom, dateTo, reportType, transCategory]);
+    }, [dateFrom, dateTo, reportType, transCategory, selectedItem]);
 
     const getFormatedDate = (date) => moment(date).format('DD/MM/YYYY');
 
@@ -304,6 +326,24 @@ const ReportDialog = memo(
             </Dialog.Actions>
           </Dialog>
         </Portal>
+
+        <AdminDialog
+          visible={selectType === 'admin'}
+          dialogType="select"
+          onDismiss={onItemSelect}
+          admins={admins}
+          navigation={navigation}
+        />
+
+        <MembersDialog
+          visible={selectType === 'member'}
+          dialogType="select"
+          onDismiss={onItemSelect}
+          members={members}
+          admin={admin}
+          admins={admins}
+          navigation={navigation}
+        />
 
         {showDateFrom && (
           <DateTimePicker

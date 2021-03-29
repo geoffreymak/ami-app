@@ -3,7 +3,7 @@ import moment from 'moment';
 
 import getTransactionsSolde from '../../transactions/getTransactionsSolde';
 import filterTransactions from '../../transactions/filterTransactions';
-import getAdminAttribut from '../../admins/getAdminAttribut';
+
 const getFormatedDate = (date) => moment(date).format('DD/MM/YYYY');
 
 const getFormatedNumber = (number) =>
@@ -17,10 +17,10 @@ const getSpecificAdminName = (admins, code) =>
 const getSpecificAdmin = (admins, code) =>
   admins.find((admin) => admin.code === code);
 
-const createRow = ({member, transaction, miseSolde}, dates, admins, idx) => {
+const createRow = ({member, transaction}, dates, admins, idx) => {
   const filtredTransactions = filterTransactions(transaction, dates);
-  return 1
-    ? `
+  return !!filtredTransactions && !!filtredTransactions.length
+    ? html`
         <tr>
           <td class="tg-l470">${member?.id}</td>
           <td class="tg-l470">
@@ -38,9 +38,6 @@ const createRow = ({member, transaction, miseSolde}, dates, admins, idx) => {
           </td>
           <td class="tg-lvqx">
             ${getFormatedNumber(getTransactionsSolde(transaction))}
-          </td>
-          <td class="tg-lvqx">
-            ${getFormatedNumber(miseSolde[0])}
           </td>
         </tr>
       `
@@ -80,7 +77,7 @@ const createRow = ({member, transaction, miseSolde}, dates, admins, idx) => {
     : '';
 }; */
 
-const createTable = ({admin, data}, dates, admins) => {
+const createTable = (data, dates, admins) => {
   /*  const reportTransactions = getTransactionLessThan(
     transaction,
     dates.dateFrom,
@@ -92,15 +89,24 @@ const createTable = ({admin, data}, dates, admins) => {
       <th class="tg-49qb">Code:</th>
       <th class="tg-j1i3">
         <span style="font-weight:400;font-style:normal">
-          ${!!admin ? admin?.id : ''}
+          ${
+            !!admins && !!member
+              ? getSpecificAdmin(admins, member.code_admin)?.code
+              : ''
+          }
         </span>
       </th>
-      <th class="tg-49qb"></th>
       <th class="tg-49qb"></th>
       <th class="tg-49qb">Attribut:</th>
       <th class="tg-j1i3">
         <span style="font-weight:400;font-style:normal">
-          ${!!admin ? getAdminAttribut(admin?.attribut) : ''}
+          ${
+            !!admins && !!member
+              ? getAdminAttribut(
+                  getSpecificAdmin(admins, member.code_admin)?.attribut,
+                )
+              : ''
+          }
         </span>
       </th>
     </tr>
@@ -109,15 +115,22 @@ const createTable = ({admin, data}, dates, admins) => {
       <th class="tg-49qb">Nom:</th>
       <th class="tg-j1i3">
         <span style="font-weight:400;font-style:normal">
-          ${!!admin ? admin?.nom : ''}
+          ${
+            !!admins && !!member
+              ? getSpecificAdmin(admins, member.code_admin)?.nom
+              : ''
+          }
         </span>
       </th>
-      <th class="tg-49qb"></th>
       <th class="tg-49qb"></th>
       <th class="tg-49qb">Téléphone:</th>
       <th class="tg-j1i3">
         <span style="font-weight:400;font-style:normal">
-          ${!!admin ? admin?.telephone : ''}
+          ${
+            !!admins && !!member
+              ? getSpecificAdmin(admins, member.code_admin)?.telephone
+              : ''
+          }
         </span>
       </th>
     </tr>
@@ -128,7 +141,6 @@ const createTable = ({admin, data}, dates, admins) => {
       <th class="tg-9gfu center">Dépot</th>
       <th class="tg-9gfu center">Rétrait</th>
       <th class="tg-9gfu center">Solde</th>
-      <th class="tg-9gfu center">Mise</th>
     </tr>
 
     ${
@@ -179,10 +191,10 @@ const createHtml = (data, dates, admins) => `
         @page {
           /* set page margins */
           margin: 0.6cm;
-
+          size: landscape;
           counter-increment: page;
 
-          top {
+          @top {
             content: 'Page ' counter(page) ' of ' counter(pages) ' pages ';
           }
         }
@@ -214,7 +226,6 @@ const createHtml = (data, dates, admins) => `
           font-size: 10pt;
           font-weight: normal;
         }
-
         .tg {
           border-collapse: collapse;
           border-spacing: 0;
@@ -228,7 +239,7 @@ const createHtml = (data, dates, admins) => `
           font-family: Arial, sans-serif;
           font-size: 14px;
           overflow: hidden;
-          padding: 10px 20px;
+          padding: 10px 5px;
           word-break: normal;
         }
         .tg th {
@@ -239,7 +250,7 @@ const createHtml = (data, dates, admins) => `
           font-size: 14px;
           font-weight: normal;
           overflow: hidden;
-          padding: 10px 20px;
+          padding: 10px 5px;
           word-break: normal;
         }
 
@@ -306,17 +317,14 @@ const createHtml = (data, dates, admins) => `
           font-weight: normal;
           overflow: hidden;
         }
-
         tr {
           text-align: left;
           border: 1px solid black;
-          margin-top: 50px;
         }
         th,
         td {
           padding: 5px;
         }
-
         .no-content {
           background-color: red;
         }
@@ -325,40 +333,25 @@ const createHtml = (data, dates, admins) => `
           border: 1px solid black;
         }
 
+        .uppercase{
+          text-transform: uppercase;
+        }
+
         table {
           border-collapse: collapse;
-        }
-
-        tr.no-border.top {
-          border-bottom: none;
-        }
-
-        tr.no-border.bottom {
-          border-top: none;
-        }
-
-        tr.no-border th {
-          border: none;
-        }
-
-        tr {
-          page-break-inside: avoid;
-          page-break-after: auto;
         }
 
         td {
           font-size: 12px;
         }
 
-        .label th {
-          padding: 5px;
+        table {
+          page-break-inside: auto;
+          page-break-after: always;
         }
-        .label th.center {
-          padding-top: 20px;
-        }
-
-        .label th.report {
-          text-align: left;
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
         }
       </style>
     </head>
@@ -373,7 +366,8 @@ const createHtml = (data, dates, admins) => `
         </div>
       </div>
       <table class="tg">
-        ${data && data.map((data) => createTable(data, dates, admins)).join('')}
+        ${data.map((data, idx) => createTable(data, dates, admins)).join('')}
+        
       </table>
     </body>
   </html>
