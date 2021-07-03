@@ -11,6 +11,13 @@ import {
   setNativeExceptionHandler,
 } from 'react-native-exception-handler';
 
+import messaging from '@react-native-firebase/messaging';
+
+// Register background handler
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  console.log('Message handled in the background!', remoteMessage);
+});
+
 setJSExceptionHandler((error, isFatal) => {
   // This is your custom global error handler
   // You do stuff like show an error dialog

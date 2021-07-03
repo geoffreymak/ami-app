@@ -10,6 +10,7 @@ import {
 import {Snackbar, Provider as PaperProvider} from 'react-native-paper';
 import {createStackNavigator} from '@react-navigation/stack';
 import {NavigationContainer} from '@react-navigation/native';
+import auth from '@react-native-firebase/auth';
 import NetInfo from '@react-native-community/netinfo';
 import {useSelector, useDispatch} from 'react-redux';
 
@@ -30,8 +31,20 @@ import useThemeMode from '../utils/hooks/useThemeMode';
 import useCachedResources from '../utils/hooks/useCachedResources';
 import usePreferences from '../utils/hooks/usePreferences';
 
-const LOGOUT_TIME = 1000 * (60 * 2);
+const LOGOUT_TIME = 1000 * (60 * 3);
 const Stack = createStackNavigator();
+
+auth()
+  .signInAnonymously()
+  .then((value) => {
+    console.log('User signed in anonymously', value);
+  })
+  .catch((error) => {
+    if (error.code === 'auth/operation-not-allowed') {
+      console.log('Enable anonymous in your firebase console.');
+    }
+    console.error(error);
+  });
 
 const StackNavigator = () => {
   const clearTimeoutRef = useRef(null);
@@ -92,33 +105,31 @@ const StackNavigator = () => {
       />
       <IconRegistry icons={EvaIconsPack} />
       <NavigationContainer theme={theme}>
-        <PaperProvider theme={theme}>
-          <ApplicationProvider {...eva} theme={eva.light}>
+        <ApplicationProvider {...eva} theme={eva.light}>
+          <PaperProvider theme={theme}>
             <ThemeProvider theme={theme}>
-              <ImageBackground style={{flex: 1}}>
-                <Stack.Navigator>
-                  {!loginState.success ? (
-                    <Stack.Screen
-                      name="Login"
-                      options={{
-                        headerShown: false,
-                      }}
-                      component={LoginScreen}
-                    />
-                  ) : (
-                    <Stack.Screen
-                      name="Main"
-                      options={{
-                        headerShown: false,
-                      }}
-                      component={HomeDrawerNavigator}
-                    />
-                  )}
-                </Stack.Navigator>
-              </ImageBackground>
+              <Stack.Navigator>
+                {!loginState.success ? (
+                  <Stack.Screen
+                    name="Login"
+                    options={{
+                      headerShown: false,
+                    }}
+                    component={LoginScreen}
+                  />
+                ) : (
+                  <Stack.Screen
+                    name="Main"
+                    options={{
+                      headerShown: false,
+                    }}
+                    component={HomeDrawerNavigator}
+                  />
+                )}
+              </Stack.Navigator>
             </ThemeProvider>
-          </ApplicationProvider>
-        </PaperProvider>
+          </PaperProvider>
+        </ApplicationProvider>
       </NavigationContainer>
       <Snackbar
         visible={!!snackbarText}

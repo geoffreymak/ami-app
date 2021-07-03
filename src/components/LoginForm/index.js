@@ -16,16 +16,21 @@ import {
   Paragraph,
 } from 'react-native-paper';
 
+import {useDispatch} from 'react-redux';
+
 import useSnackbar from '../../utils/hooks/useSnackbar';
+import {mergeTransaction} from '../../redux/actions/transactionActions';
 import * as S from './styles';
 
-const windowHeight = Dimensions.get('window').height;
+const windowHeight = Dimensions.get('window').height - StatusBar.currentHeight;
 
 export default function LoginForm({navigation, onLogin, loginState}) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [visible, setVisible] = useState(false);
   const {checkConnection} = useSnackbar();
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (loginState.success) {
@@ -38,11 +43,12 @@ export default function LoginForm({navigation, onLogin, loginState}) {
   const {error} = loginState;
 
   const handleLogin = () => {
-    if (!checkConnection()) {
+    /*  if (!checkConnection()) {
       return;
-    }
+    }*/
 
     onLogin({username, password});
+    //dispatch(mergeTransaction());
   };
 
   const theme = useTheme();

@@ -33,9 +33,12 @@ const StarIcon = (props) => <Icon {...props} name="star" />;
 
 // !!no change value
 export const ACTIVE_MEMBERS_LIST = 'ActiveMembersList';
+export const ACTIVE_MEMBERS_GLOBAL_LIST = 'ActiveMembersGlobalList';
 export const MEMBERS_CARD = 'MembersCard';
 export const TRANSACTION_BALANCE = 'TransactionBalance';
+export const TRANSACTION_GLOBAL_BALANCE = 'TransactionGlobalBalance';
 export const MISE_BALANCE = 'MiseBalance';
+export const MISE_GLOBAL_BALANCE = 'MiseGlobalBalance';
 
 const ReportDialog = memo(
   ({visible, onDismiss, admin, admins, members, navigation}) => {
@@ -73,11 +76,19 @@ const ReportDialog = memo(
 
     const onReportPresse = (reportType) => async () => {
       setReportType(reportType);
-      if (reportType === MEMBERS_CARD) {
+      if (reportType === MEMBERS_CARD && admin?.attribut === 'A3') {
         setSelectType('member');
+      } else if (
+        reportType === MISE_GLOBAL_BALANCE ||
+        reportType === TRANSACTION_GLOBAL_BALANCE ||
+        reportType === ACTIVE_MEMBERS_GLOBAL_LIST
+      ) {
+        setOpenDateDialog(true);
       } else {
         setSelectType('admin');
+        if (admin?.attribut === 'A3') setOpenDateDialog(true);
       }
+
       onDismiss();
     };
 
@@ -102,7 +113,7 @@ const ReportDialog = memo(
         <Portal>
           <Dialog visible={visible} onDismiss={onDismiss}>
             <Dialog.Title style={{color: theme.colors.primary}}>
-              Choisir le Rapport
+              Choisir Le Rapport
             </Dialog.Title>
             {/* <Dialog.Content> */}
             <Dialog.ScrollArea
@@ -113,68 +124,116 @@ const ReportDialog = memo(
               }}>
               <ScrollView>
                 <List.Item
-                  onPress={onReportPresse(ACTIVE_MEMBERS_LIST)}
-                  title="Liste de membre actifs"
-                  left={(props) => (
-                    <Avatar.Icon
-                      size={45}
-                      icon="file-document-outline"
-                      style={{
-                        borderRadius: 10,
-                        marginTop: 10,
-                        marginRight: 10,
-                      }}
-                    />
-                  )}
-                />
-
-                <List.Item
                   onPress={onReportPresse(MEMBERS_CARD)}
-                  title="Fiche de membres"
+                  title="Fiche De Membre"
                   left={(props) => (
                     <Avatar.Icon
-                      size={45}
+                      size={30}
                       icon="file-document-outline"
                       style={{
                         borderRadius: 10,
-                        marginTop: 10,
-                        marginRight: 10,
+                        marginTop: 5,
+                        marginRight: 2,
                       }}
                     />
                   )}
                 />
-
+                <List.Item
+                  onPress={onReportPresse(ACTIVE_MEMBERS_LIST)}
+                  title="Liste Détailée De Membres Actifs"
+                  left={(props) => (
+                    <Avatar.Icon
+                      size={30}
+                      icon="file-document-outline"
+                      style={{
+                        borderRadius: 10,
+                        marginTop: 5,
+                        marginRight: 2,
+                      }}
+                    />
+                  )}
+                />
+                {admin?.attribut !== 'A3' && (
+                  <List.Item
+                    onPress={onReportPresse(ACTIVE_MEMBERS_GLOBAL_LIST)}
+                    title="Liste Globale De Membres Actifs"
+                    left={(props) => (
+                      <Avatar.Icon
+                        size={30}
+                        icon="file-document-outline"
+                        style={{
+                          borderRadius: 10,
+                          marginTop: 5,
+                          marginRight: 2,
+                        }}
+                      />
+                    )}
+                  />
+                )}
                 <List.Item
                   onPress={onReportPresse(TRANSACTION_BALANCE)}
-                  title="Balance détailée"
+                  title="Balance Détailée Transactions"
                   left={(props) => (
                     <Avatar.Icon
-                      size={45}
+                      size={30}
                       icon="file-document-outline"
                       style={{
                         borderRadius: 10,
-                        marginTop: 10,
-                        marginRight: 10,
+                        marginTop: 5,
+                        marginRight: 2,
                       }}
                     />
                   )}
                 />
-
+                {admin?.attribut !== 'A3' && (
+                  <List.Item
+                    onPress={onReportPresse(TRANSACTION_GLOBAL_BALANCE)}
+                    title="Balance Globale Transactions"
+                    left={(props) => (
+                      <Avatar.Icon
+                        size={30}
+                        icon="file-document-outline"
+                        style={{
+                          borderRadius: 10,
+                          marginTop: 5,
+                          marginRight: 2,
+                        }}
+                      />
+                    )}
+                  />
+                )}
                 <List.Item
                   onPress={onReportPresse(MISE_BALANCE)}
-                  title="Balance mises"
+                  title="Balance Détailée Bénefice"
                   left={(props) => (
                     <Avatar.Icon
-                      size={45}
+                      size={30}
                       icon="file-document-outline"
                       style={{
                         borderRadius: 10,
-                        marginTop: 10,
-                        marginRight: 10,
+                        marginTop: 5,
+                        marginRight: 2,
                       }}
                     />
                   )}
                 />
+                {admin?.attribut !== 'A3' && (
+                  <List.Item
+                    onPress={onReportPresse(MISE_GLOBAL_BALANCE)}
+                    title="Balance Globale Bénefice"
+                    left={(props) => (
+                      <Avatar.Icon
+                        size={30}
+                        icon="file-document-outline"
+                        style={{
+                          borderRadius: 10,
+                          marginTop: 5,
+                          marginRight: 2,
+                        }}
+                      />
+                    )}
+                  />
+                )}
               </ScrollView>
             </Dialog.ScrollArea>
             {/* </Dialog.Content> */}
@@ -328,7 +387,7 @@ const ReportDialog = memo(
         </Portal>
 
         <AdminDialog
-          visible={selectType === 'admin'}
+          visible={selectType === 'admin' && admin?.attribut !== 'A3'}
           dialogType="select"
           onDismiss={onItemSelect}
           admins={admins}

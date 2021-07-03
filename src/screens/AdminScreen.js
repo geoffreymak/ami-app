@@ -9,12 +9,14 @@ import {
   addAdmin,
   updateAdmin,
   removeAdminUpdate,
+  deleteAdmin,
 } from '../redux/actions/adminActions';
 
 const AdminScreen = memo((props) => {
   const {
     addAdmin,
     updateAdmin,
+    deleteAdmin,
     addingState,
     updatedAdmin,
     removeAdminUpdate,
@@ -46,6 +48,7 @@ const AdminScreen = memo((props) => {
             navigation={props.navigation}
             onAdd={addAdmin}
             onUpdate={updateAdmin}
+            onDelete={deleteAdmin}
             addingState={addingState}
             removeAdminUpdate={removeAdminUpdate}
           />
@@ -64,4 +67,5 @@ export default connect(mapStateToProps, {
   addAdmin,
   updateAdmin,
   removeAdminUpdate,
+  deleteAdmin,
 })(AdminScreen);

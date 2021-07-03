@@ -1,17 +1,18 @@
-import React from "react";
+import React from 'react';
 
-import { createDrawerNavigator } from "@react-navigation/drawer";
+import {createDrawerNavigator} from '@react-navigation/drawer';
 
-import SettingScreen from "../screens/SettingScreen";
-import AboutScreen from "../screens/AboutScreen";
-import HomeScreen from "../screens/HomeScreen";
-import MembersScreen from "../screens/MembersScreen";
-import AdminScreen from "../screens/AdminScreen";
-import TransactionScreen from "../screens/TransactionScreen";
-import AccountScreen from "../screens/AccountScreen";
-import ReportScreen from "../screens/ReportScreen";
+import SettingScreen from '../screens/SettingScreen';
+import AboutScreen from '../screens/AboutScreen';
+import HomeScreen from '../screens/HomeScreen';
+import MembersScreen from '../screens/MembersScreen';
+import AdminScreen from '../screens/AdminScreen';
+import TransactionScreen from '../screens/TransactionScreen';
+import AccountScreen from '../screens/AccountScreen';
+import ReportScreen from '../screens/ReportScreen';
+import WaitingScreen from '../screens/WaitingScreen';
 
-import DrawerContent from "../components/DrawerContent";
+import DrawerContent from '../components/DrawerContent';
 
 const Drawer = createDrawerNavigator();
 
@@ -80,6 +81,14 @@ const DrawerNavigator = () => {
           headerShown: false,
         }}
         component={TransactionScreen}
+      />
+
+      <Drawer.Screen
+        name="Waiting"
+        options={{
+          headerShown: false,
+        }}
+        component={WaitingScreen}
       />
     </Drawer.Navigator>
   );

@@ -2,6 +2,7 @@ import numeral from 'numeral';
 import moment from 'moment';
 
 import getTransactionsSolde from '../../transactions/getTransactionsSolde';
+import sortTransactions from '../../transactions/sortTransactions';
 import filterTransactions from '../../transactions/filterTransactions';
 import getAdminAttribut from '../../admins/getAdminAttribut';
 const getFormatedDate = (date) => moment(date).format('DD/MM/YYYY');
@@ -14,12 +15,76 @@ const getSpecificAdminName = (admins, code) =>
     ? admins.find((admin) => admin.code === code).nom
     : '';
 
-const getSpecificAdmin = (admins, code) =>
-  admins.find((admin) => admin.code === code);
+const mergreTransaction = (data, field = 'transaction') => {
+  let mergedArray = [];
+  data.forEach((v) => {
+    const transaction = v[field];
+    mergedArray = [...mergedArray, ...transaction];
+  });
+  return mergedArray;
+};
 
-const createRow = ({member, transaction, miseSolde}, dates, admins, idx) => {
-  const filtredTransactions = filterTransactions(transaction, dates);
-  return 1
+const getTotalDocumentFees = (mises) => {
+  return mises.reduce((accumulator, mise) => {
+    const montant = getTransactionsSolde(mise.transactions, 'R');
+    const credit = numeral(montant).value() - numeral(mise.mise).value();
+    const month = numeral(
+      Math.ceil(
+        moment(mise.dateFin).diff(moment(mise.dateDebut), 'month', true),
+      ),
+    ).value();
+    const interet = numeral((credit * ((month || 1) * 10)) / 100).value();
+    const documentFees = numeral(mise.mise).value() - numeral(interet).value();
+
+    return numeral(documentFees + accumulator).value();
+  }, 0);
+};
+
+const mergeMiseSolde = (mises) => {
+  return mises.reduce(
+    (accumulator, currentValue) => [
+      accumulator[0] + currentValue[0],
+      accumulator[1] + currentValue[1],
+      accumulator[2] + currentValue[2],
+    ],
+    [0, 0, 0],
+  );
+};
+
+const mergreMise = (data) => {
+  let mergedArray = [];
+  data.forEach(({solde}) => {
+    mergedArray = [...mergedArray, solde];
+  });
+  return mergedArray;
+};
+
+const getRetard = (transactions, date) => {
+  if (
+    moment(date).isBefore(moment(), 'day') &&
+    getTransactionsSolde(transactions) < 0
+  ) {
+    return (
+      getTransactionsSolde(transactions, 'R') -
+      getTransactionsSolde(transactions, 'D')
+    );
+  }
+  return 0;
+};
+
+const getTotalRetard = (mises) =>
+  mises
+    .map((mise) => getRetard(mise.transactions, mise.dateFin))
+    .reduce((pre, cur) => parseFloat(pre) + parseFloat(cur), 0);
+
+const createRow = (
+  {member, transactions, solde, addDate},
+  dates,
+  admins,
+  idx,
+) => {
+  // const filtredTransactions = filterTransactions(transaction, dates);
+  return true
     ? `
         <tr>
           <td class="tg-l470">${member?.id}</td>
@@ -30,62 +95,217 @@ const createRow = ({member, transaction, miseSolde}, dates, admins, idx) => {
               ${member?.nom}
             </span>
           </td>
+          <td class="tg-lvqx">${getFormatedDate(addDate)}</td>
           <td class="tg-lvqx">
-            ${getFormatedNumber(getTransactionsSolde(transaction, 'D'))}
+            ${getFormatedNumber(getTransactionsSolde(transactions, 'D'))}
           </td>
           <td class="tg-lvqx">
-            ${getFormatedNumber(getTransactionsSolde(transaction, 'R'))}
+            ${getFormatedNumber(getTransactionsSolde(transactions, 'R'))}
           </td>
+           <td class="tg-lvqx">${getFormatedNumber(
+             getTransactionsSolde(transactions) - solde[0],
+           )}</td>
           <td class="tg-lvqx">
-            ${getFormatedNumber(getTransactionsSolde(transaction))}
-          </td>
-          <td class="tg-lvqx">
-            ${getFormatedNumber(miseSolde[0])}
-          </td>
+            ${getFormatedNumber(getTransactionsSolde(transactions))}
+          </td>        
+          <td class="tg-lvqx">${getFormatedNumber(solde[0])}</td>
         </tr>
       `
     : '';
 };
-/* const createRow = ({member, transaction}, dates, admins, idx) => {
-  const filtredTransactions = filterTransactions(transaction, dates);
-  return !!filtredTransactions && !!filtredTransactions.length
-    ? html`
-        <tr>
-          <td class="tg-l470">${!!member ? member.id : ''}</td>
-          <td class="tg-l470 uppercase">${!!member ? member.nom : ''}</td>
-          <td class="tg-l470">${!!member ? member.telephone : ''}</td>
-          <td class="tg-l470 uppercase">${!!member ? member.adresse : ''}</td>
 
-          <td class="tg-l470 uppercase">
-            ${!!admins && !!member
-              ? getSpecificAdminName(admins, member.code_admin)
-              : ''}
-          </td>
-          <td class="tg-lvqx">
-            ${!!member ? getFormatedNumber(member.mise) : ''}
-          </td>
-          <td class="tg-lvqx">
-            ${!!transaction
-              ? getFormatedNumber(getTransactionsSolde(filtredTransactions))
-              : ''}
-          </td>
+const createRowCredit = (mise, dates, admins, idx) => {
+  const {member, transactions, solde, dateDebut, dateFin} = mise;
+  const filtredTransactions = filterTransactions(transactions, dates);
+  return `
+    <tr>
+      <td class="tg-l470">${member?.id}</td>
+      <td class="tg-l470">
+        <span
+          style="font-weight:400;font-style:normal; font-size:8pt; text-transform: uppercase;"
+        >
+          ${member?.nom}
+        </span>
+      </td>
+      <td class="tg-l470">${getFormatedDate(dateDebut)}</td>
+      <td class="tg-l470">${getFormatedDate(dateFin)}</td>
+      <td class="tg-lvqx">
+        ${getFormatedNumber(
+          getTransactionsSolde(transactions, 'R') -
+            getTransactionsSolde(transactions, 'D'),
+        )}
+      </td>
+      <td class="tg-lvqx">
+        ${getFormatedNumber(getTransactionsSolde(transactions, 'D'))}
+      </td>
 
-          <td class="tg-lvqx">
-            ${!!transaction
-              ? getFormatedNumber(getTransactionsSolde(transaction))
-              : ''}
-          </td>
-        </tr>
-      `
-    : '';
-}; */
+      <td class="tg-lvqx">
+        ${getFormatedNumber(getTransactionsSolde(transactions, 'R') - solde[0])}
+      </td>
 
-const createTable = ({admin, data}, dates, admins) => {
-  /*  const reportTransactions = getTransactionLessThan(
-    transaction,
-    dates.dateFrom,
-  ); */
-  const {member} = data;
+      <td class="tg-lvqx">
+        ${getFormatedNumber(getTotalDocumentFees([mise]))}
+      </td>
+
+      <td class="tg-lvqx">
+        ${getFormatedNumber(solde[0] - getTotalDocumentFees([mise]))}
+      </td>
+
+      <td class="tg-lvqx">${getFormatedNumber(
+        getRetard(transactions, dateFin),
+      )}</td>
+    </tr>
+  `;
+};
+
+const createRowFooter = ({mise: data}, label = 'Sous-Total/Générale') => `
+  <tr>
+    <th class="tg-49qb center" colspan="3">${label}</th>
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(
+                  mergreTransaction(data, 'transactions'),
+                  'D',
+                ),
+              )
+            : ''
+        }
+      </span>
+    </td>
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(
+                  mergreTransaction(data, 'transactions'),
+                  'R',
+                ),
+              )
+            : ''
+        }
+      </span>
+    </td>
+
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(mergreTransaction(data, 'transactions')) -
+                  mergeMiseSolde(mergreMise(data))[0],
+              )
+            : ''
+        }
+      </span>
+    </td>
+
+     <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(mergreTransaction(data, 'transactions')),
+              )
+            : ''
+        }
+      </span>
+    </td>
+
+     <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+       ${getFormatedNumber(mergeMiseSolde(mergreMise(data))[0])}
+      </span>
+    </td>
+  </tr>
+`;
+
+const createRowFooterCredit = ({mise: data}, label = 'Sous-Total/Générale') => `
+  <tr>
+    <th class="tg-49qb center" colspan="4">${label}</th>
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(
+                  mergreTransaction(data, 'transactions'),
+                  'R',
+                ) -
+                  getTransactionsSolde(
+                    mergreTransaction(data, 'transactions'),
+                    'D',
+                  ),
+              )
+            : ''
+        }
+      </span>
+    </td>
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(
+                  mergreTransaction(data, 'transactions'),
+                  'D',
+                ),
+              )
+            : ''
+        }
+      </span>
+    </td>
+
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${
+          !!data
+            ? getFormatedNumber(
+                getTransactionsSolde(
+                  mergreTransaction(data, 'transactions'),
+                  'R',
+                ) - mergeMiseSolde(mergreMise(data))[0],
+              )
+            : ''
+        }
+      </span>
+    </td>
+
+     <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+       ${getFormatedNumber(getTotalDocumentFees(data))}
+      </span>
+    </td>
+
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+       ${getFormatedNumber(
+         mergeMiseSolde(mergreMise(data))[0] - getTotalDocumentFees(data),
+       )}
+      </span>
+    </td>
+
+    <td class="tg-lvqx">
+      <span style="font-weight:700;font-style:normal">
+        ${getFormatedNumber(getTotalRetard(data))}   
+      </span>
+    </td>
+  </tr>
+`;
+
+const createTable = ({admin, data, mise}, dates, admins, transCategory) => {
+  const filtredMise = sortTransactions(
+    filterTransactions(
+      mise,
+      dates,
+      `${transCategory === 'E' ? 'addDate' : 'dateDebut'}`,
+    ),
+    'asc',
+    `${transCategory === 'E' ? 'addDate' : 'dateDebut'}`,
+  );
 
   return `
     <tr class="no-border top">
@@ -97,6 +317,10 @@ const createTable = ({admin, data}, dates, admins) => {
       </th>
       <th class="tg-49qb"></th>
       <th class="tg-49qb"></th>
+      <th class="tg-49qb"></th>
+      <th class="tg-49qb"></th>
+      ${transCategory === 'C' ? '<th class="tg-49qb"></th>' : ''}
+      ${transCategory === 'C' ? '<th class="tg-49qb"></th>' : ''}
       <th class="tg-49qb">Attribut:</th>
       <th class="tg-j1i3">
         <span style="font-weight:400;font-style:normal">
@@ -114,6 +338,10 @@ const createTable = ({admin, data}, dates, admins) => {
       </th>
       <th class="tg-49qb"></th>
       <th class="tg-49qb"></th>
+      <th class="tg-49qb"></th>
+      <th class="tg-49qb"></th>
+      ${transCategory === 'C' ? '<th class="tg-49qb"></th>' : ''}
+      ${transCategory === 'C' ? '<th class="tg-49qb"></th>' : ''}
       <th class="tg-49qb">Téléphone:</th>
       <th class="tg-j1i3">
         <span style="font-weight:400;font-style:normal">
@@ -125,47 +353,58 @@ const createTable = ({admin, data}, dates, admins) => {
     <tr class="label">
       <th class="tg-9gfu center">Code</th>
       <th class="tg-9gfu center">Libellé</th>
-      <th class="tg-9gfu center">Dépot</th>
-      <th class="tg-9gfu center">Rétrait</th>
-      <th class="tg-9gfu center">Solde</th>
-      <th class="tg-9gfu center">Mise</th>
+      <th class="tg-9gfu center">${
+        transCategory === 'E' ? 'Date Mise' : 'Date Décaissement'
+      }</th>
+      <th class="tg-9gfu center">${
+        transCategory === 'E' ? 'Dépot' : 'Date Fin'
+      }</th>
+      <th class="tg-9gfu center">${
+        transCategory === 'E' ? 'Rétrait' : 'Reste à Payer'
+      }</th>
+      <th class="tg-9gfu center">${
+        transCategory === 'E' ? 'Solde Membre' : 'Total Payé'
+      }</th>
+
+      <th class="tg-9gfu center">${
+        transCategory === 'E' ? 'Solde Total' : 'Montant Décaissé'
+      }</th>
+
+      <th class="tg-9gfu center">${
+        transCategory === 'E' ? 'Mise' : 'Frais Document'
+      }</th>
+
+      ${transCategory === 'C' ? '<th class="tg-9gfu center">Intérêt</th>' : ''}
+
+      ${transCategory === 'C' ? '<th class="tg-9gfu center">Rétard</th>' : ''}
     </tr>
 
     ${
-      !!data
-        ? data.map((data, idx) => createRow(data, dates, admins, idx)).join('')
+      !!filtredMise
+        ? filtredMise
+            .map((m, idx) =>
+              transCategory === 'E'
+                ? createRow(m, dates, admins, idx)
+                : createRowCredit(m, dates, admins, idx),
+            )
+            .join('')
         : ''
+    }
+
+    ${
+      transCategory === 'E'
+        ? createRowFooter({mise: filtredMise}, 'Sous-Total/Periodique')
+        : createRowFooterCredit({mise: filtredMise}, 'Sous-Total/Periodique')
     }
   `;
 };
-/* const createTable = (data, dates, admins) => {
-  const {member, transaction} = data;
-  return `
-  <tr>
-    <th class="tg-9gfu">Code</th>
-    <th class="tg-9gfu">Nom</th>
-    <th class="tg-9gfu">Téléphone</th>
-    <th class="tg-9gfu">Adresse</th>
-   
-    <th class="tg-9gfu">Collecteur</th>
-    <th class="tg-9gfu">Mise</th>
-    <th class="tg-9gfu">Solde Periodique</th>
-    <th class="tg-9gfu">Solde Total</th>
-  </tr>
-  ${
-    !!data
-      ? data.map((data, idx) => createRow(data, dates, admins, idx)).join('')
-      : ''
-  }
-`;
-}; */
 
 /**
  * @description Generate an `html` page with a populated table
  * @param {[Object]} data
  * @returns {String}
  */
-const createHtml = (data, dates, admins) => `
+const createHtml = (data, dates, admins, transCategory) => `
   <html>
     <head>
       <style>
@@ -179,7 +418,7 @@ const createHtml = (data, dates, admins) => `
         @page {
           /* set page margins */
           margin: 0.6cm;
-
+          size: A4 landscape;
           counter-increment: page;
 
           top {
@@ -254,20 +493,20 @@ const createHtml = (data, dates, admins) => `
         }
         .tg .tg-lvqx {
           border-color: inherit;
-          font-size: 13px;
+          font-size: 8pt;
           text-align: right;
           vertical-align: top;
         }
         .tg .tg-l470 {
           border-color: inherit;
-          font-size: 13px;
+          font-size: 8pt;
           text-align: left;
           vertical-align: top;
         }
         .tg .tg-49qb {
           border-color: inherit;
           font-family: Georgia, serif !important;
-          font-size: 16px;
+          font-size: 11px !important;
           font-weight: bold;
           position: -webkit-sticky;
           position: sticky;
@@ -317,6 +556,9 @@ const createHtml = (data, dates, admins) => `
           padding: 5px;
         }
 
+        .center{
+          text-align: center !important;
+        }
         .no-content {
           background-color: red;
         }
@@ -367,22 +609,39 @@ const createHtml = (data, dates, admins) => `
         <div class="title">
           <p class="date">Kinshasa, le ${getFormatedDate(new Date())}</p>
           <h3>
-            LISTE DE MEMBRES ACTIFS <br />DU ${getFormatedDate(dates.dateFrom)}
-            AU ${getFormatedDate(dates.dateTo)}
+            LISTE DETAILLEE DE MEMBRES ACTIFS AUX
+            ${transCategory === 'E' ? 'EPARGNE' : 'CREDIT'}<br />DU
+            ${getFormatedDate(dates.dateFrom)} AU
+            ${getFormatedDate(dates.dateTo)}
           </h3>
         </div>
       </div>
       <table class="tg">
-        ${data && data.map((data) => createTable(data, dates, admins)).join('')}
+        ${
+          data &&
+          data
+            .map((data) => createTable(data, dates, admins, transCategory))
+            .join('')
+        }
+         ${
+           data &&
+           data
+             .map((data) =>
+               transCategory === 'E'
+                 ? createRowFooter(data)
+                 : createRowFooterCredit(data),
+             )
+             .join('')
+         }
       </table>
     </body>
   </html>
 `;
 
 /* generate html table */
-const generateTable = (data, admins, dates) => {
+const generateTable = (data, admins, dates, transCategory) => {
   try {
-    const html = createHtml(data, dates, admins);
+    const html = createHtml(data, dates, admins, transCategory);
     return html;
   } catch (error) {
     console.log('Error generating table', error);

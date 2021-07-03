@@ -9,14 +9,19 @@ import {
   addMember,
   removeMemberUpdate,
   updateMember,
+  deleteMember,
 } from '../redux/actions/membersActions';
+
+import {updateTransactions} from '../redux/actions/transactionActions';
 
 const MembersScreen = memo((props) => {
   const {
     addMember,
     addingState,
     updatedMember,
+    updateTransactions,
     updateMember,
+    deleteMember,
     removeMemberUpdate,
   } = props;
   return (
@@ -40,6 +45,8 @@ const MembersScreen = memo((props) => {
             navigation={props.navigation}
             onAdd={addMember}
             onUpdate={updateMember}
+            onUpdateTransactions={updateTransactions}
+            onDelete={deleteMember}
             addingState={addingState}
             updatedMember={updatedMember}
             removeMemberUpdate={removeMemberUpdate}
@@ -58,5 +65,7 @@ const mapStateToProps = (state) => ({
 export default connect(mapStateToProps, {
   addMember,
   updateMember,
+  updateTransactions,
   removeMemberUpdate,
+  deleteMember,
 })(MembersScreen);

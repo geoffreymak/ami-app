@@ -6,7 +6,10 @@ import {getMembers, setMemberUpdate} from '../redux/actions/membersActions';
 import {getAdmins} from '../redux/actions/adminActions';
 import {logoutAdmin} from '../redux/actions/loginActions';
 import {getSettins} from '../redux/actions/settingActions';
-import {watchTransactions} from '../redux/actions/transactionActions';
+import {
+  watchTransactions,
+  watchWaitingTransactions,
+} from '../redux/actions/transactionActions';
 
 import {Appbar, FAB, useTheme, Colors} from 'react-native-paper';
 
@@ -31,6 +34,7 @@ const HomeScreen = memo((props) => {
     getSettins,
     loginState,
     watchTransactions,
+    watchWaitingTransactions,
   } = props;
 
   const appInitialized = useRef(false);
@@ -40,6 +44,7 @@ const HomeScreen = memo((props) => {
       console.log('initialized app !');
       getSettins();
       watchTransactions();
+      watchWaitingTransactions();
       getMembers(admin);
       getAdmins(admin);
       appInitialized.current = true;
@@ -109,7 +114,11 @@ const HomeScreen = memo((props) => {
       <Appbar.Header>
         <Appbar.Action icon="menu" onPress={() => navigation.toggleDrawer()} />
         <Appbar.Content title="Accueil" />
-        <Appbar.Action icon={'exit-to-app'} onPress={logoutAdmin} />
+        <Appbar.Action
+          icon="clock-outline"
+          onPress={() => navigation.navigate('Waiting')}
+        />
+        <Appbar.Action icon="exit-to-app" onPress={logoutAdmin} />
       </Appbar.Header>
       <ImageBackground
         source={require('../assets/images/jason-leung-SAYzxuS1O3M-unsplash.jpg')}
@@ -178,4 +187,5 @@ export default connect(mapStateToProps, {
   setMemberUpdate,
   getSettins,
   watchTransactions,
+  watchWaitingTransactions,
 })(HomeScreen);

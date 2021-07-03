@@ -1,40 +1,40 @@
 import React, {useCallback, useEffect, useState, useRef, memo} from 'react';
-import {
-  StyleSheet,
-  Dimensions,
-  ImageBackground,
-  View,
-  Linking,
-} from 'react-native';
+import {StyleSheet, Dimensions, ImageBackground, View} from 'react-native';
 import * as XLSX from 'xlsx';
-import PDFReader from 'rn-pdf-reader-js';
+//import PDFReader from 'rn-pdf-reader-js';
 import Pdf from 'react-native-pdf';
 import Share from 'react-native-share';
 import RNPrint from 'react-native-print';
 import {useSelector, useDispatch} from 'react-redux';
 import {useFocusEffect} from '@react-navigation/native';
-import {Appbar, Surface, useTheme, Paragraph, Colors} from 'react-native-paper';
+import {Appbar, useTheme, Paragraph, Colors} from 'react-native-paper';
 
-import {FileSystem} from 'react-native-unimodules';
+import {FileSystem, Permissions} from 'react-native-unimodules';
+
+//import * as Notifications from 'expo-notifications';
+import * as MediaLibrary from 'expo-media-library';
 
 import generateReport from '../utils/reports/generateReport';
 import getMiseSolde from '../utils/transactions/getMiseSolde';
 import mergeTransactionFromMise from '../utils/transactions/mergeTransactionFromMise';
 
-import {getTransactions} from '../redux/actions/transactionActions';
+//import {getTransactions} from '../redux/actions/transactionActions';
 
 import Loading from '../components/Loading';
 
 import {
-  ACTIVE_MEMBERS_LIST,
   MEMBERS_CARD,
+  ACTIVE_MEMBERS_LIST,
+  ACTIVE_MEMBERS_GLOBAL_LIST,
   TRANSACTION_BALANCE,
+  TRANSACTION_GLOBAL_BALANCE,
   MISE_BALANCE,
+  MISE_GLOBAL_BALANCE,
 } from '../components/ReportDialog';
 
 const FILE_TYPE =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
-const FILE_EXTENTION = '.xlsx';
+//const FILE_EXTENTION = '.xlsx';
 
 //onst HtmlTableToJson = require('html-table-to-json');
 
@@ -50,7 +50,6 @@ const ReportScreen = memo((props) => {
   const admin = useSelector((state) => state.admin.data);
   const admins = useSelector((state) => state.admin.list);
   const members = useSelector((state) => state.members.data);
-  const transactions = useSelector((state) => state.transactions.data);
   const mises = useSelector((state) => state.transactions.data);
 
   useFocusEffect(
@@ -62,6 +61,54 @@ const ReportScreen = memo((props) => {
       };
     }, []),
   );
+
+  const getMembersCardData = useCallback(() => {
+    let adminsMise = [];
+    const selectedAdmin =
+      admin?.attribut === 'A3' ? admin : reportData.selectedItem;
+
+    let cleanedMises = {};
+    /*   let cleanedMises = []; */
+    mises
+      .filter(
+        (mise) =>
+          mise.code_admin === selectedAdmin.code &&
+          mise.category === reportData.transCategory &&
+          !!mise?.transactions?.length,
+      )
+      .forEach((mise) => {
+        const member = members.find((member) => member.compte === mise.compte);
+        const memberMises = mises.filter(
+          (mise) =>
+            mise.compte === member?.compte &&
+            mise.category === reportData.transCategory,
+        );
+
+        if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
+          cleanedMises = {
+            ...cleanedMises,
+            [member?.compte]: {mise: memberMises, member},
+          };
+        }
+      });
+
+    const data = Object.values(cleanedMises);
+
+    if (!!data?.length) {
+      let sortedData = data.sort((a, b) =>
+        a?.member?.nom.localeCompare(b?.member?.nom),
+      );
+
+      if (admin?.attribut === 'A3') {
+        sortedData = sortedData.filter(
+          (d) => d?.member?.code === reportData.selectedItem?.code,
+        );
+      }
+      adminsMise = [{admin: selectedAdmin, data: sortedData}];
+    }
+
+    return adminsMise;
+  }, [mises, members, admins, admin, reportData]);
 
   const getAdminTransData = useCallback(() => {
     let adminsTransaction = [];
@@ -76,32 +123,28 @@ const ReportScreen = memo((props) => {
         return {...transaction, memberName};
       });
 
+    console.log(
+      'adminTrans',
+      mergeTransactionFromMise(mises, reportData.transCategory),
+    );
+
     if (!!adminTrans?.length) {
       adminsTransaction = [{admin: selectedAdmin, transaction: adminTrans}];
     }
-    if (admin && admin.attribut === 'A3') {
-    }
-    /*  else {
-      admins.forEach((admin) => {
-        const adminTrans = mergeTransactionFromMise(mises)
-          .filter((transaction) => transaction.code_admin === admin.code)
-          .map((transaction) => {
-            const memberName = members.find(
-              (member) => member.compte === transaction.compte,
-            )?.nom;
-            return {...transaction, memberName};
-          });
+    return adminsTransaction;
+  }, [mises, members, admins, admin, reportData]);
 
-        if (!!adminTrans?.length) {
-          adminsTransaction = [
-            ...adminsTransaction,
-            {admin, transaction: adminTrans},
-          ];
-        }
-      });
+  const getAdminGlobalTransData = useCallback(() => {
+    let adminsTransaction = [];
 
-      const superAdminTrans = mergeTransactionFromMise(mises)
-        .filter((transaction) => transaction.code_admin === admin.code)
+    const transactions = mergeTransactionFromMise(
+      mises,
+      reportData.transCategory,
+    );
+
+    admins?.forEach((selectedAdmin) => {
+      const adminTrans = transactions
+        .filter((transaction) => transaction.code_admin === selectedAdmin.code)
         .map((transaction) => {
           const memberName = members.find(
             (member) => member.compte === transaction.compte,
@@ -109,14 +152,17 @@ const ReportScreen = memo((props) => {
           return {...transaction, memberName};
         });
 
-      if (!!superAdminTrans?.length) {
+      if (!!adminTrans?.length) {
         adminsTransaction = [
           ...adminsTransaction,
-          {admin, transaction: superAdminTrans},
+          {admin: selectedAdmin, transaction: adminTrans},
         ];
       }
-    } */
-    return adminsTransaction;
+    });
+    const sortedAdminsTransaction = adminsTransaction.sort((a, b) =>
+      a?.admin?.nom.localeCompare(b?.admin?.nom),
+    );
+    return sortedAdminsTransaction;
   }, [mises, members, admins, admin, reportData]);
 
   const getAdminMiseData = useCallback(() => {
@@ -124,158 +170,169 @@ const ReportScreen = memo((props) => {
     const selectedAdmin =
       admin?.attribut === 'A3' ? admin : reportData.selectedItem;
 
-    let cleanedMises = {};
+    /* let cleanedMises = {}; */
+    let cleanedMises = [];
     mises
-      .filter((mise) => mise.code_admin === selectedAdmin.code)
+      .filter(
+        (mise) =>
+          mise.code_admin === selectedAdmin.code &&
+          mise.category === reportData.transCategory &&
+          !!mise?.transactions?.length,
+      )
       .forEach((mise) => {
         const member = members.find((member) => member.compte === mise.compte);
-        const memberMises = mises.filter(
+        /*  const memberMises = mises.filter(
           (mise) => mise.compte === member?.compte,
-        );
-        if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
+        ); */
+
+        /*  if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
           const solde = getMiseSolde(memberMises, reportData.transCategory);
           cleanedMises = {
             ...cleanedMises,
             [member?.compte]: {...mise, solde, member},
           };
+        } */
+
+        if (!!member) {
+          const solde = getMiseSolde([mise], reportData.transCategory);
+          cleanedMises = [...cleanedMises, {...mise, solde, member}];
         }
       });
 
-    const data = Object.values(cleanedMises);
+    /*  const data = Object.values(cleanedMises); */
+    const data = cleanedMises;
     if (!!data?.length) {
       adminsMise = [{admin: selectedAdmin, mise: data}];
     }
-    /* if (admin && admin.attribut === 'A3') {
-      let cleanedMises = {};
-      mises
-        .filter((mise) => mise.code_admin === admin.code)
-        .forEach((mise) => {
-          const member = members.find(
-            (member) => member.compte === mise.compte,
-          );
-          const memberMises = mises.filter(
-            (mise) => mise.compte === member?.compte,
-          );
-          if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
-            const solde = getMiseSolde(memberMises, reportData.transCategory);
-            cleanedMises = {
-              ...cleanedMises,
-              [member?.compte]: {...mise, solde, member},
-            };
-          }
-        });
 
-      const data = Object.values(cleanedMises);
-      if (!!data?.length) {
-        adminsMise = [{admin, mise: data}];
-      }
-    } else {
-      admins.forEach((admin) => {
-        let cleanedMises = {};
-        mises
-          .filter((mise) => mise.code_admin === admin.code)
-          .forEach((mise) => {
-            const member = members.find(
-              (member) => member.compte === mise.compte,
-            );
-            const memberMises = mises.filter(
-              (mise) => mise.compte === member?.compte,
-            );
-
-            if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
-              const solde = getMiseSolde(memberMises, reportData.transCategory);
-              cleanedMises = {
-                ...cleanedMises,
-                [member?.compte]: {...mise, solde, member},
-              };
-            }
-          });
-
-        const data = Object.values(cleanedMises);
-        if (!!data?.length) {
-          adminsMise = [...adminsMise, {admin, mise: data}];
-        }
-      });
-
-      let cleanedMises = {};
-      mises
-        .filter((mise) => mise.code_admin === admin.code)
-        .forEach((mise) => {
-          const member = members.find(
-            (member) => member.compte === mise.compte,
-          );
-          const memberMises = mises.filter(
-            (mise) => mise.compte === member?.compte,
-          );
-
-          if (!!member && !cleanedMises.hasOwnProperty(member?.compte)) {
-            const solde = getMiseSolde(memberMises, reportData.transCategory);
-            cleanedMises = {
-              ...cleanedMises,
-              [member?.compte]: {...mise, solde, member},
-            };
-          }
-        });
-
-      const data = Object.values(cleanedMises);
-      if (!!data?.length) {
-        adminsMise = [...adminsMise, {admin, mise: data}];
-      }
-    } */
     return adminsMise;
   }, [mises, members, admins, admin, reportData]);
 
-  const getMembersCardData = useCallback(() => {
-    let membersTransaction = [];
-    members.forEach((member) => {
-      const memberMises = mises.filter(
-        (mise) => mise.compte === member?.compte,
-      );
-      const miseSolde = getMiseSolde(memberMises, reportData.transCategory);
-      const memberTrans = mergeTransactionFromMise(mises).filter(
-        (transaction) => transaction.compte === member.compte,
-      );
-      if (!!memberTrans?.length) {
-        membersTransaction = [
-          ...membersTransaction,
-          {member, transaction: memberTrans, miseSolde},
-        ];
+  const getAdminGlobalMiseData = useCallback(() => {
+    let adminsMise = [];
+
+    /* let cleanedMises = {}; */
+
+    admins?.forEach((selectedAdmin) => {
+      let cleanedMises = [];
+
+      mises
+        .filter(
+          (mise) =>
+            mise.code_admin === selectedAdmin.code &&
+            mise.category === reportData.transCategory &&
+            !!mise?.transactions?.length,
+        )
+        .forEach((mise) => {
+          const member = members.find(
+            (member) => member.compte === mise.compte,
+          );
+
+          if (!!member) {
+            const solde = getMiseSolde([mise], reportData.transCategory);
+            cleanedMises = [...cleanedMises, {...mise, solde, member}];
+          }
+        });
+      /*  const data = Object.values(cleanedMises); */
+      const data = cleanedMises;
+      if (!!data?.length) {
+        adminsMise = [...adminsMise, {admin: selectedAdmin, mise: data}];
       }
     });
-    return membersTransaction;
-  }, [mises, members, reportData.transCategory]);
 
-  const getMembersListData = useCallback(() => {
-    let membersTransaction = [];
-    const membersData = getMembersCardData();
-    admins?.forEach((admin) => {
-      const memberTrans = membersData.filter(
-        (data) => admin.code === data?.member?.code_admin,
-      );
+    const sortedAdminsMise = adminsMise.sort((a, b) =>
+      a?.admin?.nom.localeCompare(b?.admin?.nom),
+    );
+    return sortedAdminsMise;
+  }, [mises, members, admins, admin, reportData]);
 
-      if (!!memberTrans?.length) {
-        membersTransaction = [
-          ...membersTransaction,
-          {admin, data: memberTrans},
-        ];
+  /* const getMembersCardData = useCallback(
+    (member = null) => {
+      const selectedItem = member || reportData.selectedItem;
+      const memberData = (selectedMember) => {
+        let membersTransaction = [];
+        const memberMises = mises.filter(
+          (mise) => mise.compte === selectedMember?.compte,
+        );
+        const miseSolde = getMiseSolde(memberMises, reportData.transCategory);
+        const memberTrans = mergeTransactionFromMise(
+          mises,
+          reportData.transCategory,
+        ).filter(
+          (transaction) => transaction.compte === selectedMember?.compte,
+        );
+        if (!!memberTrans?.length) {
+          membersTransaction = [
+            ...membersTransaction,
+            {member: selectedMember, transaction: memberTrans, miseSolde},
+          ];
+        }
+        return membersTransaction;
+      };
+
+      if (member) {
+        return memberData(selectedItem);
       }
-    });
-    return membersTransaction;
-  }, [admins, getMembersCardData]);
+
+      if (admin?.attribut === 'A3') {
+        return memberData(selectedMember);
+      }
+
+      return members
+        .filter((m) => m.code_admin === selectedItem.code)
+        .map((m) => memberData(m)[0])
+        .filter((m) => !!m);
+    },
+    [mises, reportData, members],
+  ); */
+
+  /*   const getMembersListData = useCallback(() => {
+    let adminMembers = [];
+    let membersTransactions = [];
+    const selectedAdmin =
+      admin?.attribut === 'A3' ? admin : reportData.selectedItem;
+
+    members
+      .filter((m) => m.code_admin === selectedAdmin.code)
+      .forEach((member) => {
+        const memberTrans = getMembersCardData(member);
+        if (memberTrans?.length) {
+          membersTransactions = [...membersTransactions, ...memberTrans];
+        }
+      });
+
+    if (!!membersTransactions?.length) {
+      adminMembers = [
+        ...adminMembers,
+        {admin: selectedAdmin, data: membersTransactions},
+      ];
+    }
+
+    return adminMembers;
+  }, [members, reportData, getMembersCardData]); */
 
   const getTransactionsData = useCallback(() => {
     switch (reportData.report) {
-      case ACTIVE_MEMBERS_LIST: {
-        return getMembersListData();
-      }
       case MEMBERS_CARD: {
         return getMembersCardData();
+      }
+      case ACTIVE_MEMBERS_LIST: {
+        return getAdminMiseData();
+      }
+      case ACTIVE_MEMBERS_GLOBAL_LIST: {
+        return getAdminGlobalMiseData();
       }
       case TRANSACTION_BALANCE: {
         return getAdminTransData();
       }
+      case TRANSACTION_GLOBAL_BALANCE: {
+        return getAdminGlobalTransData();
+      }
       case MISE_BALANCE: {
         return getAdminMiseData();
+      }
+      case MISE_GLOBAL_BALANCE: {
+        return getAdminGlobalMiseData();
       }
       default: {
         break;
@@ -284,9 +341,10 @@ const ReportScreen = memo((props) => {
   }, [
     reportData,
     getAdminTransData,
-    getMembersCardData,
+    getAdminGlobalTransData,
     getAdminMiseData,
-    getMembersListData,
+    getMembersCardData,
+    getAdminGlobalMiseData,
   ]);
 
   const exportToCSV = async (table) => {
@@ -328,6 +386,7 @@ const ReportScreen = memo((props) => {
         console.log('generateReport', end - start);
         setLoading(false);
         setPdfUri({pdfUriB64, pdfUri, html});
+        console.log('pdfUri', pdfUriB64);
       } catch (err) {
         console.log('error on fetch report :', err);
         setLoading(false);
@@ -352,6 +411,23 @@ const ReportScreen = memo((props) => {
         await RNPrint.print({html: pdfUri?.html});
       } catch (err) {
         console.error(err);
+      }
+    }
+  }, [pdfUri]);
+
+  const onSavePdf = useCallback(async () => {
+    if (!!pdfUri) {
+      await Permissions.askAsync(Permissions.MEDIA_LIBRARY);
+      try {
+        const asset = await MediaLibrary.createAssetAsync(pdfUri?.pdfUriB64);
+        const album = await MediaLibrary.getAlbumAsync('Download');
+        if (album == null) {
+          await MediaLibrary.createAlbumAsync('Download', asset, false);
+        } else {
+          await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+        }
+      } catch (e) {
+        console.log(e);
       }
     }
   }, [pdfUri]);
@@ -385,6 +461,7 @@ const ReportScreen = memo((props) => {
         <Appbar.Content title="Rapport" />
         {!!pdfUri && <Appbar.Action onPress={onPrint} icon="printer" />}
         {!!pdfUri && <Appbar.Action onPress={onSharePdf} icon="share" />}
+        {!!pdfUri && <Appbar.Action onPress={onSavePdf} icon="download" />}
       </Appbar.Header>
 
       {!!pdfUri && !loading ? (

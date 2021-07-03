@@ -132,6 +132,17 @@ export default function DrawerContent(props) {
                 label="Transactions"
                 onPress={() => {}}
               />
+              {admin?.attribut === 'A1' && (
+                <Drawer.Item
+                  theme={{
+                    ...paperTheme,
+                    colors: {...paperTheme.colors, text: '#fff'},
+                  }}
+                  icon="database"
+                  label="Paramétres"
+                  onPress={() => props.navigation.navigate('Setting')}
+                />
+              )}
             </Drawer.Section>
             <Drawer.Section
               title="Preferences"
