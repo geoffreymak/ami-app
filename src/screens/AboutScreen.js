@@ -1,10 +1,10 @@
-import React from "react";
-import { StyleSheet } from "react-native";
+import React, {memo} from 'react';
+import {StyleSheet} from 'react-native';
 
-import { Appbar, Surface, useTheme } from "react-native-paper";
+import {Appbar, Surface, useTheme} from 'react-native-paper';
 
-const AboutScreen = (props) => {
-  const { navigation, route } = props;
+const AboutScreen = memo((props) => {
+  const {navigation, route} = props;
   const theme = useTheme();
   return (
     <>
@@ -14,11 +14,13 @@ const AboutScreen = (props) => {
       </Appbar.Header>
 
       <Surface
-        style={[styles.surface, { backgroundColor: theme.colors.background2 }]}
-      ></Surface>
+        style={[
+          styles.surface,
+          {backgroundColor: theme.colors.background2},
+        ]}></Surface>
     </>
   );
-};
+});
 
 export default AboutScreen;
 

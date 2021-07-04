@@ -108,12 +108,11 @@ export function getMembersTransaction(admin) {
   };
 }
 
-export function getMembers(admin) {
+/* export function getMembers(admin) {
   return (dispatch) => {
     const db = firestore();
 
     let query = db.collection('members');
-    query = query.orderBy('nom', 'asc');
 
     if (admin.attribut === 'A3') {
       query = query.where('code_admin', '==', admin.code);
@@ -122,6 +121,9 @@ export function getMembers(admin) {
     if (admin.attribut === 'A2') {
       query = query.where('isSuper', '==', false);
     }
+
+    query = query.where('isBlocked', '==', false);
+    query = query.orderBy('nom', 'asc');
 
     query
       .get()
@@ -137,6 +139,43 @@ export function getMembers(admin) {
       .catch((error) => {
         console.log(error);
       });
+  };
+}
+ */
+
+export function getMembers() {
+  return (dispatch, getState) => {
+    const db = firestore();
+    const {data: admin} = getState().admin;
+    if (!admin) return;
+
+    let query = db.collection('members');
+
+    if (admin.attribut === 'A3') {
+      query = query.where('code_admin', '==', admin.code);
+    }
+
+    if (admin.attribut === 'A2') {
+      query = query.where('isSuper', '==', false);
+    }
+
+    query = query.where('isBlocked', '==', false);
+    query = query.orderBy('nom', 'asc');
+
+    query.onSnapshot(
+      (querySnapshot) => {
+        const members = querySnapshot.docs.map(function (doc) {
+          return doc.data();
+        });
+        dispatch({
+          type: SET_MEMBERS_DATA,
+          data: members,
+        });
+      },
+      (error) => {
+        console.log(error);
+      },
+    );
   };
 }
 
@@ -158,24 +197,11 @@ export function addMember(member) {
         return countersRef.get().then((doc) => {
           const count = doc.exists && doc.data().members;
           return countersRef.update({members: increment}).then(() => {
-            return docRef
-              .update({
-                id: `${MEMBERS_PREFIX}${count + 1}`,
-                compte: docRef.id,
-                code: docRef.id,
-              })
-              .then(() => {
-                return db
-                  .collection('members')
-                  .doc(docRef.id)
-                  .get()
-                  .then((doc) =>
-                    dispatch({
-                      type: ADD_MEMBER,
-                      data: doc.data(),
-                    }),
-                  );
-              });
+            return docRef.update({
+              id: `${MEMBERS_PREFIX}${count + 1}`,
+              compte: docRef.id,
+              code: docRef.id,
+            });
           });
         });
       })
@@ -195,7 +221,7 @@ export function addMember(member) {
   };
 }
 
-export function updateMember(member, newData) {
+export function updateMember(member, newData, updateTrans = false) {
   return (dispatch) => {
     if (!member) return;
 
@@ -209,22 +235,42 @@ export function updateMember(member, newData) {
       .update(newData)
       .then(() => {
         console.log('Document Members successfully updated!');
-
-        dispatch({
-          type: UPDATE_MEMBER,
-          data: {...member, ...newData},
-        });
+        if (!!updateTrans) {
+        }
         dispatch({
           type: ADD_MEMBER_SUCCESS,
         });
       })
-
       .catch((error) => {
         console.error('Error updating members document: ', error);
         dispatch({
           type: ADD_MEMBER_ERROR,
           data: error,
         });
+      });
+  };
+}
+
+export function deleteMember(member) {
+  return (dispatch) => {
+    if (!member) return;
+
+    dispatch({
+      type: ADD_MEMBER_LOADING,
+    });
+
+    const db = firestore();
+    db.collection('members')
+      .doc(member.code)
+      .delete()
+      .then(() => {
+        console.log('Document successfully deleted!');
+        dispatch({
+          type: ADD_MEMBER_SUCCESS,
+        });
+      })
+      .catch((error) => {
+        console.error('Error deleting document: ', error);
       });
   };
 }

@@ -10,8 +10,13 @@ import {
 import {Snackbar, Provider as PaperProvider} from 'react-native-paper';
 import {createStackNavigator} from '@react-navigation/stack';
 import {NavigationContainer} from '@react-navigation/native';
+import auth from '@react-native-firebase/auth';
 import NetInfo from '@react-native-community/netinfo';
 import {useSelector, useDispatch} from 'react-redux';
+
+import * as eva from '@eva-design/eva';
+import {ApplicationProvider, IconRegistry} from '@ui-kitten/components';
+import {EvaIconsPack} from '@ui-kitten/eva-icons';
 
 import {ThemeProvider} from 'styled-components/native';
 import LoginScreen from '../screens/LoginScreen';
@@ -26,8 +31,20 @@ import useThemeMode from '../utils/hooks/useThemeMode';
 import useCachedResources from '../utils/hooks/useCachedResources';
 import usePreferences from '../utils/hooks/usePreferences';
 
-const LOGOUT_TIME = 1000 * (60 * 2);
+const LOGOUT_TIME = 1000 * (60 * 3);
 const Stack = createStackNavigator();
+
+auth()
+  .signInAnonymously()
+  .then((value) => {
+    console.log('User signed in anonymously', value);
+  })
+  .catch((error) => {
+    if (error.code === 'auth/operation-not-allowed') {
+      console.log('Enable anonymous in your firebase console.');
+    }
+    console.error(error);
+  });
 
 const StackNavigator = () => {
   const clearTimeoutRef = useRef(null);
@@ -86,10 +103,11 @@ const StackNavigator = () => {
         animated={true}
         backgroundColor={theme.colors.primary}
       />
+      <IconRegistry icons={EvaIconsPack} />
       <NavigationContainer theme={theme}>
-        <PaperProvider theme={theme}>
-          <ThemeProvider theme={theme}>
-            <ImageBackground style={{flex: 1}}>
+        <ApplicationProvider {...eva} theme={eva.light}>
+          <PaperProvider theme={theme}>
+            <ThemeProvider theme={theme}>
               <Stack.Navigator>
                 {!loginState.success ? (
                   <Stack.Screen
@@ -109,9 +127,9 @@ const StackNavigator = () => {
                   />
                 )}
               </Stack.Navigator>
-            </ImageBackground>
-          </ThemeProvider>
-        </PaperProvider>
+            </ThemeProvider>
+          </PaperProvider>
+        </ApplicationProvider>
       </NavigationContainer>
       <Snackbar
         visible={!!snackbarText}

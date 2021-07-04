@@ -82,9 +82,7 @@ const MainMenu = ({
       {
         title: 'Rapports',
         icon: 'file-document-outline',
-        onPress: () => {
-          onOpenReportDialog();
-        },
+        onPress: () => onOpenReportDialog(),
         background: Colors.redA200,
         iconBackground: Colors.pink200,
         visible: true,
@@ -92,15 +90,29 @@ const MainMenu = ({
       {
         title: 'Mon Compte',
         icon: 'account-circle-outline',
-        onPress: async () => {
-          navigation.navigate('Account');
-        },
+        onPress: () => navigation.navigate('Account'),
         background: Colors.teal500,
         iconBackground: Colors.pink200,
         visible: true,
       },
+      /*  {
+        title: 'Paramétres',
+        icon: 'database',
+        onPress: () => navigation.navigate('Setting'),
+        background: Colors.yellow800,
+        iconBackground: Colors.pink200,
+        visible: admin?.attribut === 'A1',
+      }, */
+      {
+        title: 'Requêtes',
+        icon: 'clock-outline',
+        onPress: () => navigation.navigate('Waiting'),
+        background: Colors.yellow800,
+        iconBackground: Colors.pink200,
+        visible: true,
+      },
     ],
-    [members, admin],
+    [admin],
   );
 
   const renderItem = ({index, item: props}) => {
@@ -130,6 +142,7 @@ const MainMenu = ({
       <FlatList
         data={formatData(buttonData, numColumns)}
         style={styles.container}
+        contentContainerStyle={styles.contentContainerStyle}
         renderItem={renderItem}
         numColumns={numColumns}
         keyExtractor={(_, idx) => idx.toString()}
@@ -212,6 +225,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 30,
   },
+  contentContainerStyle: {},
   item: {
     alignItems: 'center',
     justifyContent: 'center',

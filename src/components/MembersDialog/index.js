@@ -1,16 +1,19 @@
 import React, {useState, useEffect, useMemo} from 'react';
 
-import {FlatList, Dimensions, SectionList} from 'react-native';
+import {FlatList, View, SectionList} from 'react-native';
 import {
   Dialog,
   Portal,
   Button,
+  Paragraph,
   RadioButton,
   Searchbar,
   useTheme,
   List,
   Avatar,
   Text,
+  ActivityIndicator,
+  Colors,
 } from 'react-native-paper';
 
 import getAdminFromMember from '../../utils/admins/getAdminFromMember';
@@ -30,7 +33,10 @@ const MembersDialog = ({
   const onChangeSearch = (query) => setSearchQuery(query);
 
   const cleanedMembers = useMemo(() => {
+    if (members?.length === 0) return null;
+
     let cleanedMembers = members;
+
     if (!!members && searchQuery.trim() !== '') {
       cleanedMembers = members.filter((member) =>
         member.nom.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -45,12 +51,16 @@ const MembersDialog = ({
         return {title: admin, data: member};
       });
     }
-    console.log('cleanedMembers', cleanedMembers);
     return cleanedMembers;
   }, [searchQuery, members, admin, admins]);
 
   const onMemberClick = (member) => {
     if (!member) return;
+
+    if (dialogType === 'select') {
+      onDismiss(member, true);
+      return;
+    }
     if (dialogType === 'update') {
       setMemberUpdate(member);
       navigation.navigate('Members');
@@ -93,7 +103,7 @@ const MembersDialog = ({
       <Dialog
         visible={visible}
         onDismiss={onDismiss}
-        style={{maxHeight: '100%'}}>
+        style={{maxHeight: '100%', bottom: 20}}>
         <Dialog.Title style={{color: theme.colors.primary}}>
           Choisir un membres
         </Dialog.Title>
@@ -109,20 +119,45 @@ const MembersDialog = ({
             onChangeText={onChangeSearch}
             value={searchQuery}
           />
-          {admin && admin.attribut === 'A3' ? (
-            <FlatList
-              data={cleanedMembers}
-              renderItem={renderItem}
-              keyExtractor={(item) => item.code}
-            />
+
+          {!!cleanedMembers ? (
+            cleanedMembers.length ? (
+              admin && admin.attribut === 'A3' ? (
+                <FlatList
+                  data={cleanedMembers}
+                  renderItem={renderItem}
+                  keyExtractor={(item, idx) => `${item.code}-${idx}`}
+                />
+              ) : (
+                <SectionList
+                  sections={cleanedMembers}
+                  stickySectionHeadersEnabled
+                  keyExtractor={(item, index) => item.code}
+                  renderItem={renderItem}
+                  renderSectionHeader={renderSectionHeader}
+                />
+              )
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  margin: 50,
+                }}>
+                <Paragraph>Aucun Membre</Paragraph>
+              </View>
+            )
           ) : (
-            <SectionList
-              sections={cleanedMembers}
-              stickySectionHeadersEnabled
-              keyExtractor={(item, index) => item.code}
-              renderItem={renderItem}
-              renderSectionHeader={renderSectionHeader}
-            />
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                margin: 50,
+              }}>
+              <ActivityIndicator animating={true} color={Colors.green500} />
+            </View>
           )}
         </Dialog.ScrollArea>
         {/* </Dialog.Content> */}

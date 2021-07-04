@@ -1,19 +1,26 @@
-import React, { useState } from "react";
-import { StyleSheet } from "react-native";
+import React, {useState, useCallback} from 'react';
+import {StyleSheet} from 'react-native';
+import {Appbar, List, Switch, useTheme, Surface} from 'react-native-paper';
+import {useDispatch, useSelector} from 'react-redux';
+import {archiveTransaction} from '../redux/actions/transactionActions';
 
-import { Appbar, List, Switch, useTheme, Surface } from "react-native-paper";
-
-import { useGlobalPrefereces } from "../contexts/GlobalState";
-
-import ColorsDialog from "../components/ColorsDialog";
-import SizeDialog from "../components/SizeDialog";
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const SettingScreen = (props) => {
-  const { navigation, route } = props;
-  const [openColorDialog, setOpenColorDialog] = useState(false);
-  const [openSizeDialog, setOpenSizeDialog] = useState(false);
-  const { dark, colors } = useTheme();
-  const { toggleTheme } = useGlobalPrefereces();
+  const {navigation, route} = props;
+  const [visible, setVisible] = useState(false);
+  const transactions = useSelector((state) => state.transactions.data);
+  const dispatch = useDispatch();
+
+  const onConfirmResponse = useCallback(
+    (response) => {
+      setVisible(false);
+      if (response === true && !!transactions?.length) {
+        dispatch(archiveTransaction(transactions));
+      }
+    },
+    [transactions],
+  );
 
   return (
     <>
@@ -22,45 +29,22 @@ const SettingScreen = (props) => {
         <Appbar.Content title="Paramètres" />
       </Appbar.Header>
 
-      <Surface
-        style={[styles.surface, { backgroundColor: colors.background2 }]}
-      >
+      <Surface style={[styles.surface]}>
         <List.Section>
-          <List.Subheader>Theme</List.Subheader>
+          <List.Subheader>Transactions</List.Subheader>
           <List.Item
-            title="Mode Sombre"
-            description="Permet de réduire la fatigue des yeux"
-            onPress={toggleTheme}
-            left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
-            right={(props) => (
-              <Switch value={dark} onValueChange={toggleTheme} />
-            )}
-          />
-
-          <List.Item
-            title="Couleur Principale"
-            description="Couleur principale de l'application (uniquement en mode claire)"
-            onPress={() => setOpenColorDialog(true)}
-            left={(props) => <List.Icon {...props} icon="palette-outline" />}
+            title="Archiver les transaction"
+            description="Permet d'archiver les tous transactions qui sont à terme !"
+            onPress={() => setVisible(true)}
+            left={(props) => <List.Icon {...props} icon="database-lock" />}
           />
         </List.Section>
-
-        <List.Section>
-          <List.Subheader>Preference</List.Subheader>
-          <List.Item
-            title="Taille de Police"
-            description="La taille de police de paroles"
-            onPress={() => setOpenSizeDialog(true)}
-            left={(props) => <List.Icon {...props} icon="format-size" />}
-          />
-        </List.Section>
-
         <List.Section>
           <List.Subheader>A propos</List.Subheader>
           <List.Item
             title="A propos"
             description="A propos de l'application"
-            onPress={() => navigation.navigate("About")}
+            onPress={() => navigation.navigate('About')}
             left={(props) => (
               <List.Icon {...props} icon="information-outline" />
             )}
@@ -68,14 +52,11 @@ const SettingScreen = (props) => {
         </List.Section>
       </Surface>
 
-      <ColorsDialog
-        visible={openColorDialog}
-        onDismiss={() => setOpenColorDialog(false)}
-      />
-
-      <SizeDialog
-        visible={openSizeDialog}
-        onDismiss={() => setOpenSizeDialog(false)}
+      <ConfirmDialog
+        visible={visible}
+        onDismiss={onConfirmResponse}
+        title="Confirmation"
+        message="Etes vous sûr de vouloir archiver les transactions ?"
       />
     </>
   );
@@ -89,7 +70,7 @@ const styles = StyleSheet.create({
     // paddingVertical: 20,
   },
   paragraph: {
-    textAlign: "center",
+    textAlign: 'center',
     padding: 20,
   },
   scrollView: {

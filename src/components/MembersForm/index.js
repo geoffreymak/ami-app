@@ -20,7 +20,10 @@ import {useSelector} from 'react-redux';
 import useSnackbar from '../../utils/hooks/useSnackbar';
 import getFormatedNumber from '../../utils/formating/getFormatedNumber';
 
+import ConfirmDialog from '../ConfirmDialog';
+import AdminDialog from '../AdminDialog';
 import Layout from '../Layout';
+
 import * as S from './styles';
 
 const windowHeight = Dimensions.get('window').height;
@@ -28,7 +31,6 @@ const defaultValues = {
   nom: '',
   adresse: '',
   telephone: '',
-  mise: '',
   activite: '',
 };
 
@@ -36,7 +38,6 @@ const defaultErrorValues = {
   nom: false,
   adresse: false,
   telephone: false,
-  mise: false,
   activite: false,
 };
 
@@ -44,12 +45,16 @@ export default function MembersForm({
   navigation,
   onAdd,
   onUpdate,
+  onUpdateTransactions,
+  onDelete,
   addingState,
   updatedMember,
   removeMemberUpdate,
 }) {
   const [values, setValues] = useState(defaultValues);
   const [error, setError] = useState(defaultErrorValues);
+  const [visible, setVisible] = useState(false);
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
   const {loading, success} = addingState;
   const admin = useSelector((state) => state.admin.data);
   const members = useSelector((state) => state.members.data);
@@ -76,7 +81,6 @@ export default function MembersForm({
         nom: updatedMember.nom,
         adresse: updatedMember.adresse,
         telephone: updatedMember.telephone,
-        mise: updatedMember.mise.toString(),
         activite: updatedMember.activite,
       });
     }
@@ -88,6 +92,33 @@ export default function MembersForm({
       showSnackbar('Operation effectuée avec succées !');
     }
   }, [success]);
+
+  const onConfirmDeleteResponse = useCallback(
+    (response) => {
+      setVisible(false);
+      if (response === true && !!updatedMember) {
+        onDelete(updatedMember);
+      }
+    },
+    [updatedMember],
+  );
+
+  const handleHideAdminDialog = useCallback(
+    async (item, response) => {
+      setShowAdminDialog(false);
+      if (response === true && !!updatedMember && !!item) {
+        const data = {
+          code_admin: item.code,
+          old_code_admin: updatedMember.code_admin,
+          code_admin_update: admin.code,
+          updatedAt: new Date().toISOString(),
+        };
+        await onUpdateTransactions(updatedMember, data);
+        onUpdate(updatedMember, data);
+      }
+    },
+    [admin, updatedMember],
+  );
 
   const handleAddOrUpdate = useCallback(() => {
     if (!checkConnection()) {
@@ -102,11 +133,6 @@ export default function MembersForm({
           hasEmptyField = true;
           errorValues = {...errorValues, [field]: 'Renseigner ce champ !'};
         }
-
-        if (field === 'mise' && !parseFloat(value)) {
-          hasEmptyField = true;
-          errorValues = {...errorValues, mise: 'La mise est incorrect !'};
-        }
       }
     }
     setError(errorValues);
@@ -115,7 +141,6 @@ export default function MembersForm({
         const data = {
           ...values,
           isBlocked: false,
-          mise: parseFloat(values.mise),
           code_admin: admin.code,
           isSuper: admin.attribut === 'A1',
         };
@@ -123,7 +148,6 @@ export default function MembersForm({
       } else {
         const data = {
           ...values,
-          mise: parseFloat(values.mise),
           code_admin_update: admin.code,
         };
         onUpdate(updatedMember, data);
@@ -247,7 +271,7 @@ export default function MembersForm({
                   </HelperText>
                 </S.InputContainer>
 
-                <S.InputContainer>
+                {/*   <S.InputContainer>
                   <TextInput
                     mode="flat"
                     dense
@@ -265,7 +289,7 @@ export default function MembersForm({
                   <HelperText type="error" visible={!!error.mise}>
                     {error.mise}
                   </HelperText>
-                </S.InputContainer>
+                </S.InputContainer> */}
               </S.Card>
             </S.FormContainer>
 
@@ -273,14 +297,47 @@ export default function MembersForm({
           </S.Wrapper>
         </Layout>
       </ScrollView>
-      <FAB
-        icon="close"
-        loading={loading}
-        onPress={handleReset}
-        disabled={loading}
-        color={Colors.white}
-        style={[styles.fab, {marginRight: 90, backgroundColor: Colors.pink500}]}
-      />
+      {!updatedMember ? (
+        <FAB
+          icon="close"
+          loading={loading}
+          onPress={handleReset}
+          disabled={loading}
+          color={Colors.white}
+          style={[
+            styles.fab,
+            {marginRight: 90, backgroundColor: Colors.pink500},
+          ]}
+        />
+      ) : (
+        admin?.attribut === 'A1' && (
+          <>
+            <FAB
+              icon="account-switch"
+              loading={loading}
+              onPress={() => setShowAdminDialog(true)}
+              disabled={loading}
+              color={Colors.white}
+              style={[
+                styles.fab,
+                {marginRight: 165, backgroundColor: Colors.blue500},
+              ]}
+            />
+
+            <FAB
+              icon="delete"
+              loading={loading}
+              onPress={() => setVisible(true)}
+              disabled={loading}
+              color={Colors.white}
+              style={[
+                styles.fab,
+                {marginRight: 90, backgroundColor: Colors.pink500},
+              ]}
+            />
+          </>
+        )
+      )}
 
       <FAB
         icon={!!updatedMember ? 'content-save-edit' : 'content-save'}
@@ -289,6 +346,19 @@ export default function MembersForm({
         color={Colors.white}
         style={[styles.fab, {backgroundColor: Colors.green600}]}
         onPress={handleAddOrUpdate}
+      />
+
+      <ConfirmDialog
+        visible={visible}
+        onDismiss={onConfirmDeleteResponse}
+        title="Confirmation"
+        message="Etes vous sûr de vouloir supprimer ce membre ?"
+      />
+
+      <AdminDialog
+        visible={showAdminDialog}
+        onDismiss={handleHideAdminDialog}
+        dialogType="select"
       />
     </>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Appbar, Surface, TextInput} from 'react-native-paper';
 import {ImageBackground} from 'react-native';
 import MembersForm from '../components/MembersForm';
@@ -9,14 +9,19 @@ import {
   addMember,
   removeMemberUpdate,
   updateMember,
+  deleteMember,
 } from '../redux/actions/membersActions';
 
-function MembersScreen(props) {
+import {updateTransactions} from '../redux/actions/transactionActions';
+
+const MembersScreen = memo((props) => {
   const {
     addMember,
     addingState,
     updatedMember,
+    updateTransactions,
     updateMember,
+    deleteMember,
     removeMemberUpdate,
   } = props;
   return (
@@ -40,6 +45,8 @@ function MembersScreen(props) {
             navigation={props.navigation}
             onAdd={addMember}
             onUpdate={updateMember}
+            onUpdateTransactions={updateTransactions}
+            onDelete={deleteMember}
             addingState={addingState}
             updatedMember={updatedMember}
             removeMemberUpdate={removeMemberUpdate}
@@ -48,7 +55,7 @@ function MembersScreen(props) {
       </ImageBackground>
     </>
   );
-}
+});
 
 const mapStateToProps = (state) => ({
   addingState: state.members.adding,
@@ -58,5 +65,7 @@ const mapStateToProps = (state) => ({
 export default connect(mapStateToProps, {
   addMember,
   updateMember,
+  updateTransactions,
   removeMemberUpdate,
+  deleteMember,
 })(MembersScreen);

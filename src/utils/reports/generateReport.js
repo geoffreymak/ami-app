@@ -21,6 +21,7 @@ const generateReport = async (
 ) => {
   try {
     const start = new Date().getTime();
+    console.log('reportType', reportType);
     const html = createTable(reportType, data, admins, dates, transCategory);
     const end = new Date().getTime();
     console.log('generateHtml', end - start);

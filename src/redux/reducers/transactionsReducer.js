@@ -3,6 +3,7 @@ import {
   ADD_TRANSACTION_LOADING,
   ADD_TRANSACTION_SUCCESS,
   SET_TRANSACTION_DATA,
+  SET_WAITING_TRANSACTION_DATA,
   RESET_DATA,
   ADD_TRANSACTION,
   SET_TRANSACTIONS,
@@ -10,7 +11,8 @@ import {
 } from '../actions/transactionActions';
 
 const initialState = {
-  data: {},
+  data: [],
+  waiting: [],
   list: [],
   adding: {
     loading: false,
@@ -25,6 +27,13 @@ const transactionsReducer = function (state = initialState, action) {
       return {
         ...state,
         data: action.data,
+      };
+    }
+
+    case SET_WAITING_TRANSACTION_DATA: {
+      return {
+        ...state,
+        waiting: action.data,
       };
     }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Appbar, Surface, TextInput} from 'react-native-paper';
 import {ScrollView, Dimensions, View} from 'react-native';
 import LoginForm from '../components/LoginForm';
@@ -9,7 +9,7 @@ import {loginAdmin} from '../redux/actions/loginActions';
 
 const windowHeight = Dimensions.get('window').height;
 
-function LoginScreen(props) {
+const LoginScreen = memo((props) => {
   const {login, loginAdmin} = props;
   return (
     <DismissKeyboard>
@@ -22,7 +22,7 @@ function LoginScreen(props) {
       </ScrollView>
     </DismissKeyboard>
   );
-}
+});
 
 const mapStateToProps = (state) => ({
   login: state.login,

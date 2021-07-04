@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Appbar, Surface, TextInput} from 'react-native-paper';
 import {ImageBackground} from 'react-native';
 import AdminForm from '../components/AdminForm';
@@ -9,12 +9,14 @@ import {
   addAdmin,
   updateAdmin,
   removeAdminUpdate,
+  deleteAdmin,
 } from '../redux/actions/adminActions';
 
-function AdminScreen(props) {
+const AdminScreen = memo((props) => {
   const {
     addAdmin,
     updateAdmin,
+    deleteAdmin,
     addingState,
     updatedAdmin,
     removeAdminUpdate,
@@ -46,6 +48,7 @@ function AdminScreen(props) {
             navigation={props.navigation}
             onAdd={addAdmin}
             onUpdate={updateAdmin}
+            onDelete={deleteAdmin}
             addingState={addingState}
             removeAdminUpdate={removeAdminUpdate}
           />
@@ -53,7 +56,7 @@ function AdminScreen(props) {
       </ImageBackground>
     </>
   );
-}
+});
 
 const mapStateToProps = (state) => ({
   addingState: state.admin.adding,
@@ -64,4 +67,5 @@ export default connect(mapStateToProps, {
   addAdmin,
   updateAdmin,
   removeAdminUpdate,
+  deleteAdmin,
 })(AdminScreen);

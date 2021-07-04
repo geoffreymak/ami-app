@@ -92,20 +92,9 @@ export function addAdmin(admin) {
               });
             })
             .then(() => {
-              return db
-                .collection('admins')
-                .doc(docRef.id)
-                .get()
-                .then((doc) => {
-                  dispatch({
-                    type: ADD_ADMIN,
-                    data: doc.data(),
-                  });
-
-                  dispatch({
-                    type: ADD_ADMIN_SUCCESS,
-                  });
-                });
+              dispatch({
+                type: ADD_ADMIN_SUCCESS,
+              });
             });
         } else {
           dispatch({
@@ -139,18 +128,6 @@ export function updateAdmin(admin, newData, selfData = false) {
       .update(newData)
       .then(() => {
         console.log('Document successfully added!');
-        if (selfData) {
-          dispatch({
-            type: SET_ADMIN_DATA,
-            data: {...admin, ...newData},
-          });
-        } else {
-          dispatch({
-            type: UPDATE_ADMIN,
-            data: {...admin, ...newData},
-          });
-        }
-
         dispatch({
           type: ADD_ADMIN_SUCCESS,
         });
@@ -234,7 +211,7 @@ export function getAdminsTransaction(admin) {
   };
 }
 
-export function getAdmins(admin = {}) {
+/* export function getAdmins(admin = {}) {
   return (dispatch) => {
     const db = firestore();
     let query = db.collection('admins');
@@ -260,6 +237,63 @@ export function getAdmins(admin = {}) {
       })
       .catch((error) => {
         console.log(error);
+      });
+  };
+} */
+
+export function getAdmins() {
+  return (dispatch, getState) => {
+    const db = firestore();
+    const {data: admin} = getState().admin;
+    if (!admin) return;
+
+    let query = db.collection('admins');
+
+    if (admin.attribut === 'A3') {
+      return;
+    }
+
+    if (admin.attribut === 'A2') {
+      query = query.where('attribut', '==', 'A3');
+    }
+
+    query.onSnapshot(
+      (querySnapshot) => {
+        const admins = querySnapshot.docs
+          .map((doc) => doc.data())
+          .filter((v) => v.code !== admin.code);
+        dispatch({
+          type: SET_ADMIN_LIST_DATA,
+          data: admins,
+        });
+      },
+      (error) => {
+        console.log(error);
+      },
+    );
+  };
+}
+
+export function deleteAdmin(admin) {
+  return (dispatch) => {
+    if (!admin) return;
+
+    dispatch({
+      type: ADD_ADMIN_LOADING,
+    });
+
+    const db = firestore();
+    db.collection('admins')
+      .doc(admin.code)
+      .delete()
+      .then(() => {
+        console.log('Document successfully deleted!');
+        dispatch({
+          type: ADD_ADMIN_SUCCESS,
+        });
+      })
+      .catch((error) => {
+        console.error('Error deleting document: ', error);
       });
   };
 }

@@ -20,6 +20,7 @@ import {DrawerContentScrollView} from '@react-navigation/drawer';
 // import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 import getAttribut from '../../utils/admins/getAdminAttribut';
+import {APP_VERSION} from '../../utils/const';
 import ColorsDialog from '../ColorsDialog';
 
 export default function DrawerContent(props) {
@@ -131,6 +132,17 @@ export default function DrawerContent(props) {
                 label="Transactions"
                 onPress={() => {}}
               />
+              {admin?.attribut === 'A1' && (
+                <Drawer.Item
+                  theme={{
+                    ...paperTheme,
+                    colors: {...paperTheme.colors, text: '#fff'},
+                  }}
+                  icon="database"
+                  label="Paramétres"
+                  onPress={() => props.navigation.navigate('Setting')}
+                />
+              )}
             </Drawer.Section>
             <Drawer.Section
               title="Preferences"
@@ -165,7 +177,7 @@ export default function DrawerContent(props) {
               ...paperTheme,
               colors: {...paperTheme.colors, text: '#fff'},
             }}
-            label="Version 1.2.1"
+            label={`Version ${APP_VERSION}`}
             onPress={() => props.navigation.navigate('About')}
           />
         </Drawer.Section>

@@ -1,4 +1,9 @@
 {
   "name": "AmiApp",
-  "displayName": "Ami App"
+  "displayName": "Ami App",
+  "expo": {
+    "android": {
+      "useNextNotificationsApi": true
+    }
+  }
 }

@@ -13,7 +13,10 @@ import {useFocusEffect} from '@react-navigation/native';
 import {useSelector} from 'react-redux';
 
 import useSnackbar from '../../utils/hooks/useSnackbar';
+
 import Layout from '../Layout';
+import ConfirmDialog from '../ConfirmDialog';
+
 import * as S from './styles';
 
 const windowHeight = Dimensions.get('window').height;
@@ -36,11 +39,13 @@ export default function AdminForm({
   onAdd,
   onUpdate,
   addingState,
+  onDelete,
   removeAdminUpdate,
 }) {
   const [values, setValues] = useState(defaultValues);
   const [attribut, setAttribut] = useState('A3');
   const [visible, setVisible] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [error, setError] = useState(defaultErrorValues);
   const {loading, success, error: addingError} = addingState;
   const {data: admin, updatedAdmin} = useSelector((state) => state.admin);
@@ -81,6 +86,16 @@ export default function AdminForm({
       showSnackbar('Operation effectuée avec succées !');
     }
   }, [success]);
+
+  const onConfirmDeleteResponse = useCallback(
+    (response) => {
+      setDeleteConfirm(false);
+      if (response === true && !!updatedAdmin) {
+        onDelete(updatedAdmin);
+      }
+    },
+    [updatedAdmin],
+  );
 
   const handleAddOrUpdate = useCallback(() => {
     if (!checkConnection()) {
@@ -243,11 +258,23 @@ export default function AdminForm({
           </S.Wrapper>
         </Layout>
       </ScrollView>
-      {!updatedAdmin && (
+      {!updatedAdmin ? (
         <FAB
           icon="close"
           loading={loading}
           onPress={handleReset}
+          disabled={loading}
+          color={Colors.white}
+          style={[
+            styles.fab,
+            {marginRight: 90, backgroundColor: Colors.pink500},
+          ]}
+        />
+      ) : (
+        <FAB
+          icon="delete"
+          loading={loading}
+          onPress={() => setDeleteConfirm(true)}
           disabled={loading}
           color={Colors.white}
           style={[
@@ -264,6 +291,13 @@ export default function AdminForm({
         color={Colors.white}
         style={[styles.fab, {backgroundColor: Colors.green600}]}
         onPress={handleAddOrUpdate}
+      />
+
+      <ConfirmDialog
+        visible={deleteConfirm}
+        onDismiss={onConfirmDeleteResponse}
+        title="Confirmation"
+        message="Etes vous sûr de vouloir supprimer cet administrateur ?"
       />
     </>
   );
